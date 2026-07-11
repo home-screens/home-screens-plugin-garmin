@@ -126,11 +126,15 @@ declare global {
       useFetchData: <T>(url: string | null, refreshMs: number) => [T | null, string | null];
 
       // ── Display Cache ──
-      /** In-memory cache for data between renders and screen transitions */
+      /** In-memory cache for data between renders and screen transitions.
+       *  Stale-while-revalidate: `get` returns the stored value wrapped as
+       *  { data, stale } — never the raw value — or null only when the key
+       *  has never been set. Entries past ttlMs come back with stale: true;
+       *  they are never dropped. */
       displayCache: {
-        get: (key: string) => unknown;
-        set: (key: string, value: unknown) => void;
-        prefetch: (keys: string[]) => Promise<void>;
+        get: <T>(key: string) => { data: T; stale: boolean } | null;
+        set: (key: string, value: unknown, ttlMs: number) => void;
+        prefetch: (url: string, ttlMs: number) => Promise<void>;
       };
 
       // ── Host Settings ──

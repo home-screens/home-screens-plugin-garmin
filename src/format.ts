@@ -3,8 +3,9 @@ import type { Units } from './types';
 /** Seconds → "7h 32m" (or "0m"). */
 export function formatDuration(seconds: number | null): string {
   if (!seconds || seconds <= 0) return '0m';
-  const h = Math.floor(seconds / 3600);
-  const m = Math.round((seconds % 3600) / 60);
+  const totalMinutes = Math.round(seconds / 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
   if (h === 0) return `${m}m`;
   return `${h}h ${m}m`;
 }
@@ -42,4 +43,47 @@ export function activityLabel(typeKey: string): string {
     strength_training: 'Strength', yoga: 'Yoga', cardio: 'Cardio',
   };
   return map[typeKey] ?? typeKey.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Total seconds → "m:ss" with rounding applied before the split, so 299.6s
+ *  becomes "5:00", never "4:60". */
+function mmss(totalSeconds: number): string {
+  const rounded = Math.round(totalSeconds);
+  const m = Math.floor(rounded / 60);
+  const s = rounded % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+/** m/s → "5:13 /km" or "8:23 /mi". Null/zero speed → "--". */
+export function formatPace(metersPerSecond: number | null, units: Units): string {
+  if (!metersPerSecond || metersPerSecond <= 0) return '--';
+  const unitMeters = units === 'imperial' ? 1609.344 : 1000;
+  return `${mmss(unitMeters / metersPerSecond)} ${units === 'imperial' ? '/mi' : '/km'}`;
+}
+
+/** m/s → "24.1 km/h" or "15.0 mph". Null/zero → "--". */
+export function formatSpeed(metersPerSecond: number | null, units: Units): string {
+  if (!metersPerSecond || metersPerSecond <= 0) return '--';
+  const v = units === 'imperial' ? metersPerSecond * 2.236936 : metersPerSecond * 3.6;
+  return `${v.toFixed(1)} ${units === 'imperial' ? 'mph' : 'km/h'}`;
+}
+
+/** Swim pace: m/s → "1:45 /100m" (metric) or "1:36 /100yd" (imperial). */
+export function formatSwimPace(metersPerSecond: number | null, units: Units): string {
+  if (!metersPerSecond || metersPerSecond <= 0) return '--';
+  const unitMeters = units === 'imperial' ? 91.44 : 100;
+  return `${mmss(unitMeters / metersPerSecond)} ${units === 'imperial' ? '/100yd' : '/100m'}`;
+}
+
+/** Meters climbed → "320 m" or "1,051 ft". */
+export function formatElevation(meters: number | null, units: Units): string {
+  if (meters == null) return '--';
+  if (units === 'imperial') return `${Math.round(meters * 3.28084).toLocaleString('en-US')} ft`;
+  return `${Math.round(meters).toLocaleString('en-US')} m`;
+}
+
+/** Seconds → "4:52" for split rows (formatDuration's "25m" is too coarse there). */
+export function formatMinSec(seconds: number | null): string {
+  if (!seconds || seconds <= 0) return '--';
+  return mmss(seconds);
 }

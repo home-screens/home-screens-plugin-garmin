@@ -1,13 +1,13 @@
 {
   "id": "garmin",
   "name": "Garmin",
-  "version": "1.0.0",
-  "description": "Your Garmin Connect health data: steps, Body Battery, sleep, and activities.",
+  "version": "1.1.0",
+  "description": "Your Garmin Connect health data: steps, Body Battery, sleep, activities, and weekly training.",
   "author": "home-screens",
   "license": "MIT",
   "minAppVersion": "1.8.0",
   "moduleType": "garmin",
-  "category": "Personal",
+  "category": "Health & Fitness",
   "icon": "Activity",
 
   "auth": { "type": "garmin" },
@@ -18,6 +18,8 @@
     "view": "summary",
     "units": "metric",
     "activityCount": 4,
+    "sportFilter": "all",
+    "weeklyStyle": "bySport",
     "refreshIntervalMs": 900000
   },
 
@@ -35,8 +37,8 @@
         "type": "string",
         "title": "View",
         "ui:widget": "select",
-        "enum": ["summary", "bodyBattery", "sleep", "activities"],
-        "enumLabels": ["Daily summary", "Body Battery", "Sleep", "Activities"],
+        "enum": ["summary", "bodyBattery", "sleep", "activities", "latestActivity", "weekly"],
+        "enumLabels": ["Daily summary", "Body Battery", "Sleep", "Activities", "Latest activity", "Weekly training"],
         "ui:group": "Layout"
       },
       "units": {
@@ -56,6 +58,24 @@
         "ui:step": 1,
         "ui:group": "Activities",
         "ui:showWhen": { "field": "view", "equals": "activities" }
+      },
+      "sportFilter": {
+        "type": "string",
+        "title": "Sport",
+        "description": "Applies to the Latest activity and Activities views.",
+        "ui:widget": "select",
+        "enum": ["all", "running", "cycling", "swimming", "walking", "hiking", "strength"],
+        "enumLabels": ["All sports", "Running", "Cycling", "Swimming", "Walking", "Hiking", "Strength"],
+        "ui:group": "Activities"
+      },
+      "weeklyStyle": {
+        "type": "string",
+        "title": "Weekly list",
+        "ui:widget": "select",
+        "enum": ["bySport", "individual"],
+        "enumLabels": ["Group by sport", "List each workout"],
+        "ui:group": "Layout",
+        "ui:showWhen": { "field": "view", "equals": "weekly" }
       },
       "refreshIntervalMs": {
         "type": "number",

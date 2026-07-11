@@ -8,6 +8,9 @@ const base: GarminData = {
   bodyBatteryCurve: [], sleepScore: 82, sleepTotalSeconds: 27120,
   sleepDeep: 5400, sleepLight: 14400, sleepRem: 6000, sleepAwake: 1320,
   sleepStart: null, sleepEnd: null, activities: [],
+  intensityMinutes: 70, intensityMinutesGoal: 150, activeCalories: 640,
+  floorsAscended: 12, distanceMeters: 6400, hrv: 48, restlessMoments: 21,
+  sleepBodyBatteryChange: 44, stressCurve: [],
 };
 
 describe('stateValues', () => {

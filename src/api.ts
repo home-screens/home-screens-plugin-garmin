@@ -1,7 +1,7 @@
 import type { GarminData, GarminActivity } from './types';
 
 const PLUGIN_ID = 'garmin';
-const BASE = 'https://connectapi.garmin.com';
+export const BASE = 'https://connectapi.garmin.com';
 
 /** Thrown when the proxy reports the Garmin connection is gone (401). */
 export class AuthExpiredError extends Error {}
@@ -17,7 +17,7 @@ function todayIso(timezone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
 }
 
-async function getJson<T>(url: string, cacheTtlMs: number): Promise<T | null> {
+export async function getJson<T>(url: string, cacheTtlMs: number): Promise<T | null> {
   const res = await pluginFetch(url, cacheTtlMs);
   if (res.status === 401) throw new AuthExpiredError();
   if (!res.ok) return null;
@@ -36,16 +36,20 @@ async function getDisplayName(): Promise<string | null> {
   return cachedDisplayName;
 }
 
+function listCacheTtl(refreshMs: number): number {
+  return Math.max(60_000, Math.min(refreshMs, 900_000));
+}
+
 export async function fetchGarminData(
   timezone: string,
   activityCount: number,
   refreshMs: number,
 ): Promise<GarminData> {
-  const cacheTtl = Math.max(60_000, Math.min(refreshMs, 900_000));
+  const cacheTtl = listCacheTtl(refreshMs);
   const date = todayIso(timezone);
   const displayName = await getDisplayName();
 
-  const [summary, sleep, battery, activities] = await Promise.all([
+  const [summary, sleep, battery, activities, stress] = await Promise.all([
     displayName
       ? getJson<RawSummary>(
           `${BASE}/usersummary-service/usersummary/daily/${encodeURIComponent(displayName)}?calendarDate=${date}`,
@@ -66,9 +70,28 @@ export async function fetchGarminData(
       `${BASE}/activitylist-service/activities/search/activities?start=0&limit=${activityCount}`,
       cacheTtl,
     ),
+    getJson<RawStress>(
+      `${BASE}/wellness-service/wellness/dailyStress/${date}`,
+      cacheTtl,
+    ),
   ]);
 
-  return normalize(summary, sleep, battery, activities);
+  return normalize(summary, sleep, battery, activities, stress);
+}
+
+/** Activities in [startDate, endDate] (ISO dates, inclusive) for the weekly view.
+ *  Same endpoint and TTL policy as the daily list. Null on non-OK. */
+export async function fetchActivitiesRange(
+  startDate: string,
+  endDate: string,
+  refreshMs: number,
+  limit = 50,
+): Promise<GarminActivity[] | null> {
+  const raw = await getJson<RawActivity[]>(
+    `${BASE}/activitylist-service/activities/search/activities?startDate=${startDate}&endDate=${endDate}&start=0&limit=${limit}`,
+    listCacheTtl(refreshMs),
+  );
+  return raw ? normalizeActivities(raw) : null;
 }
 
 // --- Raw response shapes (subset of fields we use) ---
@@ -81,6 +104,12 @@ interface RawSummary {
   bodyBatteryMostRecentValue?: number;
   bodyBatteryHighestValue?: number;
   bodyBatteryLowestValue?: number;
+  activeKilocalories?: number;
+  moderateIntensityMinutes?: number;
+  vigorousIntensityMinutes?: number;
+  intensityMinutesGoal?: number;
+  floorsAscended?: number;
+  totalDistanceMeters?: number;
 }
 interface RawSleep {
   dailySleepDTO?: {
@@ -93,6 +122,9 @@ interface RawSleep {
     sleepEndTimestampLocal?: number;
     sleepScores?: { overall?: { value?: number } };
   };
+  avgOvernightHrv?: number;
+  restlessMomentsCount?: number;
+  bodyBatteryChange?: number;
 }
 interface RawBattery {
   charged?: number;
@@ -107,17 +139,20 @@ interface RawActivity {
   duration?: number; // seconds
   averageHR?: number;
   startTimeLocal?: string;
+  averageSpeed?: number; // m/s
+  elevationGain?: number;
+  calories?: number;
+  avgPower?: number | null;
+  averageRunningCadenceInStepsPerMinute?: number;
+  averageBikingCadenceInRevPerMinute?: number;
+}
+interface RawStress {
+  // [epochMs, value]; -1/-2 mean "not measured" and are filtered out.
+  stressValuesArray?: [number, number][];
 }
 
-export function normalize(
-  summary: RawSummary | null,
-  sleep: RawSleep | null,
-  battery: RawBattery[] | null,
-  activities: RawActivity[] | null,
-): GarminData {
-  const dto = sleep?.dailySleepDTO;
-  const b = battery?.[0];
-  const acts: GarminActivity[] = (activities ?? []).map((a) => ({
+export function normalizeActivities(activities: RawActivity[]): GarminActivity[] {
+  return activities.map((a) => ({
     id: a.activityId ?? 0,
     name: a.activityName ?? 'Activity',
     typeKey: a.activityType?.typeKey ?? 'other',
@@ -125,7 +160,28 @@ export function normalize(
     durationSeconds: a.duration ?? 0,
     averageHr: a.averageHR ?? null,
     startLocal: a.startTimeLocal ?? null,
+    averageSpeed: a.averageSpeed ?? null,
+    elevationGain: a.elevationGain ?? null,
+    calories: a.calories ?? null,
+    avgPower: a.avgPower ?? null,
+    cadence: a.averageRunningCadenceInStepsPerMinute
+      ?? a.averageBikingCadenceInRevPerMinute ?? null,
   }));
+}
+
+export function normalize(
+  summary: RawSummary | null,
+  sleep: RawSleep | null,
+  battery: RawBattery[] | null,
+  activities: RawActivity[] | null,
+  stress: RawStress | null,
+): GarminData {
+  const dto = sleep?.dailySleepDTO;
+  const b = battery?.[0];
+  const moderate = summary?.moderateIntensityMinutes;
+  const vigorous = summary?.vigorousIntensityMinutes;
+  const intensityMinutes =
+    moderate == null && vigorous == null ? null : (moderate ?? 0) + 2 * (vigorous ?? 0);
 
   return {
     steps: summary?.totalSteps ?? null,
@@ -149,6 +205,17 @@ export function normalize(
     sleepAwake: dto?.awakeSleepSeconds ?? null,
     sleepStart: dto?.sleepStartTimestampLocal ?? null,
     sleepEnd: dto?.sleepEndTimestampLocal ?? null,
-    activities: acts,
+    activities: normalizeActivities(activities ?? []),
+    intensityMinutes,
+    intensityMinutesGoal: summary?.intensityMinutesGoal ?? null,
+    activeCalories: summary?.activeKilocalories ?? null,
+    floorsAscended: summary?.floorsAscended ?? null,
+    distanceMeters: summary?.totalDistanceMeters ?? null,
+    hrv: sleep?.avgOvernightHrv ?? null,
+    restlessMoments: sleep?.restlessMomentsCount ?? null,
+    sleepBodyBatteryChange: sleep?.bodyBatteryChange ?? null,
+    stressCurve: (stress?.stressValuesArray ?? [])
+      .filter(([, v]) => v >= 0)
+      .map(([t, v]) => ({ t, v })),
   };
 }

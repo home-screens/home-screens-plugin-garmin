@@ -1,22 +1,39 @@
 import React from 'react';
 import type { PluginComponentProps } from './hs-plugin';
-import type { GarminView, Units } from './types';
-import { useGarminData, useConnection } from './hooks';
+import type { GarminView, SportFilter, Units, ViewProps, WeeklyStyle } from './types';
+import { useGarminData, useConnection, useModuleSize } from './hooks';
 import { PLUGIN_ID, stateValues, deriveProvidedKeys } from './shared-state';
 import { EmptyState } from './components';
-import { SummaryView, BodyBatteryView, SleepView, ActivitiesView } from './views';
+import {
+  SummaryView, BodyBatteryView, SleepView, ActivityListView, ActivityHeroView, WeeklyView,
+} from './views';
 
-const VALID_VIEWS = new Set<string>(['summary', 'bodyBattery', 'sleep', 'activities']);
+const VALID_VIEWS = new Set<string>([
+  'summary', 'bodyBattery', 'sleep', 'activities', 'latestActivity', 'weekly',
+]);
+const VALID_FILTERS = new Set<string>([
+  'all', 'running', 'cycling', 'swimming', 'walking', 'hiking', 'strength',
+]);
 
 export default function Garmin({ config, style, timezone }: PluginComponentProps) {
   const view = (VALID_VIEWS.has(config.view as string) ? config.view : 'summary') as GarminView;
   const units: Units = config.units === 'imperial' ? 'imperial' : 'metric';
   const activityCount = Math.max(1, Math.min(10, (config.activityCount as number) ?? 4));
   const refreshMs = Math.max(300_000, (config.refreshIntervalMs as number) ?? 900_000);
+  const sportFilter = (VALID_FILTERS.has(config.sportFilter as string)
+    ? config.sportFilter : 'all') as SportFilter;
+  const weeklyStyle: WeeklyStyle = config.weeklyStyle === 'individual' ? 'individual' : 'bySport';
   const tz = timezone ?? 'UTC';
 
+  // A sport filter searches within the fetched window, so widen it beyond the
+  // visible row count when one is active.
+  const fetchCount = sportFilter !== 'all' && (view === 'latestActivity' || view === 'activities')
+    ? Math.max(activityCount, 20)
+    : activityCount;
+
   const connected = useConnection();
-  const load = useGarminData(connected === true, tz, activityCount, refreshMs);
+  const load = useGarminData(connected === true, tz, fetchCount, refreshMs);
+  const { ref, tier, width } = useModuleSize();
 
   // Publish shared-state keys whenever fresh data lands.
   React.useEffect(() => {
@@ -35,7 +52,7 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
     WebkitBackdropFilter: `blur(${style.backdropBlur ?? 0}px)`,
   };
 
-  return <div style={root}>{renderBody()}</div>;
+  return <div style={root} ref={ref}>{renderBody()}</div>;
 
   function renderBody() {
     if (connected === null) return <EmptyState title="Loading" body="Checking your Garmin connection..." />;
@@ -58,11 +75,15 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
     if (load.status === 'loading') return <EmptyState title="Loading" body="Fetching your Garmin data..." />;
     if (load.status === 'error') return <EmptyState title="Can't reach Garmin" body={load.message} />;
 
-    const props = { data: load.data, units, timezone: tz, activityCount };
+    const props: ViewProps = {
+      data: load.data, units, timezone: tz, activityCount, tier, width, sportFilter, weeklyStyle, refreshMs,
+    };
     switch (view) {
       case 'bodyBattery': return <BodyBatteryView {...props} />;
       case 'sleep': return <SleepView {...props} />;
-      case 'activities': return <ActivitiesView {...props} />;
+      case 'activities': return <ActivityListView {...props} />;
+      case 'latestActivity': return <ActivityHeroView {...props} />;
+      case 'weekly': return <WeeklyView {...props} />;
       default: return <SummaryView {...props} />;
     }
   }

@@ -1,13 +1,21 @@
 import React from 'react';
 import { PALETTE } from './theme';
 
-/** Circular progress ring (steps). ratio in [0,1]; overflow is clamped. */
+/** Circular progress ring (steps). ratio in [0,1]; overflow is clamped.
+ *  `inner` draws a second concentric ring just inside the first (intensity
+ *  minutes on the summary view at medium+). */
 export function Ring({
-  ratio, size, stroke, color, label, sub,
-}: { ratio: number; size: number; stroke: number; color: string; label: string; sub: string }) {
+  ratio, size, stroke, color, label, sub, inner,
+}: {
+  ratio: number; size: number; stroke: number; color: string; label: string; sub: string;
+  inner?: { ratio: number; color: string };
+}) {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const clamped = Math.max(0, Math.min(1, ratio));
+  const ri = r - stroke - 3;
+  const ci = 2 * Math.PI * ri;
+  const innerClamped = inner ? Math.max(0, Math.min(1, inner.ratio)) : 0;
   return (
     <div style={{ position: 'relative', width: size, height: size }}>
       <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
@@ -16,6 +24,15 @@ export function Ring({
           cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke}
           strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c * (1 - clamped)}
         />
+        {inner && (
+          <>
+            <circle cx={size / 2} cy={size / 2} r={ri} fill="none" stroke={PALETTE.rail} strokeWidth={stroke * 0.6} />
+            <circle
+              cx={size / 2} cy={size / 2} r={ri} fill="none" stroke={inner.color} strokeWidth={stroke * 0.6}
+              strokeLinecap="round" strokeDasharray={ci} strokeDashoffset={ci * (1 - innerClamped)}
+            />
+          </>
+        )}
       </svg>
       <div style={{
         position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',

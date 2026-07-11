@@ -6,10 +6,14 @@ Requires Home Screens 1.8.0 or newer (the release that added host-managed sign-i
 
 ## Views
 
-- **Daily summary** — steps progress ring with Body Battery, resting heart rate, stress, and sleep score tiles
-- **Body Battery** — current level gauge, charged/drained totals, and today's trend line
-- **Sleep** — total duration, sleep-stage bar (deep/light/REM/awake), and bed/wake times
-- **Activities** — recent workouts with distance, duration, and average heart rate
+- **Daily summary** — steps progress ring (with an intensity-minutes ring on bigger modules), Body Battery, resting heart rate, stress, and sleep score tiles
+- **Body Battery** — current level gauge, charged/drained totals, and today's trend with stress overlay
+- **Sleep** — total duration, sleep-stage bar (deep/light/REM/awake), HRV and restlessness, and bed/wake times
+- **Activities** — recent workouts with sport icons, distance, pace or speed, and heart rate
+- **Latest activity** — your newest workout in detail: sport-specific stats, heart-rate and elevation chart, HR zones, and splits
+- **Weekly training** — the last 7 days: a per-day activity chart plus totals by sport
+
+Views adapt to the module's size — a small card shows the essentials; a large module adds charts, splits, and extra stats. The Latest activity and Activities views can be pinned to one sport in the module settings.
 
 ## Shared state
 
