@@ -1,0 +1,85 @@
+{
+  "id": "garmin",
+  "name": "Garmin",
+  "version": "1.0.0",
+  "description": "Your Garmin Connect health data: steps, Body Battery, sleep, and activities.",
+  "author": "home-screens",
+  "license": "MIT",
+  "minAppVersion": "1.8.0",
+  "moduleType": "garmin",
+  "category": "Personal",
+  "icon": "Activity",
+
+  "auth": { "type": "garmin" },
+  "allowedDomains": ["connectapi.garmin.com"],
+  "permissions": ["network", "oauth"],
+
+  "defaultConfig": {
+    "view": "summary",
+    "units": "metric",
+    "activityCount": 4,
+    "refreshIntervalMs": 900000
+  },
+
+  "defaultSize": { "w": 520, "h": 640 },
+
+  "defaultStyle": {
+    "padding": 20,
+    "backgroundColor": "rgba(0, 0, 0, 0.45)"
+  },
+
+  "configSchema": {
+    "type": "object",
+    "properties": {
+      "view": {
+        "type": "string",
+        "title": "View",
+        "ui:widget": "select",
+        "enum": ["summary", "bodyBattery", "sleep", "activities"],
+        "enumLabels": ["Daily summary", "Body Battery", "Sleep", "Activities"],
+        "ui:group": "Layout"
+      },
+      "units": {
+        "type": "string",
+        "title": "Units",
+        "ui:widget": "select",
+        "enum": ["metric", "imperial"],
+        "enumLabels": ["Metric (km)", "Imperial (mi)"],
+        "ui:group": "Layout"
+      },
+      "activityCount": {
+        "type": "number",
+        "title": "Activities to show",
+        "minimum": 1,
+        "maximum": 10,
+        "ui:widget": "slider",
+        "ui:step": 1,
+        "ui:group": "Activities",
+        "ui:showWhen": { "field": "view", "equals": "activities" }
+      },
+      "refreshIntervalMs": {
+        "type": "number",
+        "title": "Refresh interval",
+        "minimum": 300000,
+        "maximum": 3600000,
+        "ui:widget": "slider",
+        "ui:step": 300000,
+        "ui:group": "Timing"
+      }
+    }
+  },
+
+  "providesState": [
+    { "key": "body_battery", "label": "Body Battery level", "sampleValues": ["78", "25"] },
+    { "key": "sleep_score", "label": "Sleep score", "sampleValues": ["82", "44"] },
+    { "key": "steps", "label": "Steps today", "sampleValues": ["8421"] }
+  ],
+
+  "exports": {
+    "component": "default",
+    "configSection": "ConfigSection"
+  },
+
+  "dataRequirements": [],
+  "prefetchUrl": null
+}
