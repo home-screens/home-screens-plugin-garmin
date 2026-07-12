@@ -23,7 +23,10 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
   const sportFilter = (VALID_FILTERS.has(config.sportFilter as string)
     ? config.sportFilter : 'all') as SportFilter;
   const weeklyStyle: WeeklyStyle = config.weeklyStyle === 'individual' ? 'individual' : 'bySport';
-  const tz = timezone ?? 'UTC';
+  // The host does not pass a timezone prop; the display's timezone lives in
+  // host settings. A UTC fallback silently asks Garmin for tomorrow's data
+  // every evening (date-keyed endpoints return empty for future dates).
+  const tz = timezone ?? window.__HS_SDK__?.getHostSettings().timezone ?? 'UTC';
 
   // A sport filter searches within the fetched window, so widen it beyond the
   // visible row count when one is active.
