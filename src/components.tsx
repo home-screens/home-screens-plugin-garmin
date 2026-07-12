@@ -96,12 +96,41 @@ export function Sparkline({
   );
 }
 
-export function StatTile({ label, value, unit, color }: { label: string; value: string; unit?: string; color?: string }) {
+/** A value marker on a horizontal rail with a highlighted target band
+ *  (weekly load vs. optimal tunnel, last-night HRV vs. balanced range).
+ *  Scale runs 0 → max; the marker is green inside the band, amber outside. */
+export function MarkerBar({ value, bandLow, bandHigh, max, width, height: h = 26 }: {
+  value: number; bandLow: number; bandHigh: number; max: number; width: number; height?: number;
+}) {
+  const x = (v: number) => Math.max(0, Math.min(1, v / (max || 1))) * width;
+  const inBand = value >= bandLow && value <= bandHigh;
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+    <svg width={width} height={h} style={{ maxWidth: '100%' }}>
+      <rect x={0} y={h / 2 - 5} width={width} height={10} rx={5} fill={PALETTE.rail} />
+      <rect
+        x={x(bandLow)} y={h / 2 - 5} width={Math.max(0, x(bandHigh) - x(bandLow))}
+        height={10} rx={5} fill={PALETTE.bodyBattery} opacity={0.35}
+      />
+      <circle
+        cx={Math.min(Math.max(x(value), 8), width - 8)} cy={h / 2} r={8}
+        fill={inBand ? PALETTE.bodyBattery : PALETTE.stress}
+      />
+    </svg>
+  );
+}
+
+export function StatTile({ label, value, unit, color, align = 'left', valueSize = 26 }: {
+  label: string; value: string; unit?: string; color?: string;
+  align?: 'left' | 'center'; valueSize?: number;
+}) {
+  return (
+    <div style={{
+      display: 'flex', flexDirection: 'column', gap: 2,
+      alignItems: align === 'center' ? 'center' : 'flex-start', textAlign: align,
+    }}>
       <div style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 0.5 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 700, color: color ?? 'inherit' }}>
-        {value}{unit && <span style={{ fontSize: 14, opacity: 0.6, marginLeft: 3 }}>{unit}</span>}
+      <div style={{ fontSize: valueSize, fontWeight: 700, color: color ?? 'inherit' }}>
+        {value}{unit && <span style={{ fontSize: Math.round(valueSize * 0.54), opacity: 0.6, marginLeft: 3, whiteSpace: 'nowrap' }}>{unit}</span>}
       </div>
     </div>
   );

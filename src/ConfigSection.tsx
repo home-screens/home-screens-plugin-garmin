@@ -7,7 +7,12 @@ const VIEWS = [
   ['sleep', 'Sleep', "Last night's sleep stages, duration, and bed/wake times."],
   ['activities', 'Activities', 'Your most recent workouts with distance, time, and heart rate.'],
   ['latestActivity', 'Latest activity', 'A closer look at your newest workout: stats, charts, and splits.'],
-  ['weekly', 'Weekly training', 'Your last 7 days of workouts, day by day and sport by sport.'],
+  ['weekly', 'Weekly training', "This week's workouts, day by day and sport by sport."],
+  ['trainingReadiness', 'Training readiness', "How ready your body is to train today, and what's helping or holding you back."],
+  ['trainingStatus', 'Training status', 'Whether your training is paying off, with training load and VO2 max.'],
+  ['hrv', 'HRV status', 'Overnight heart rate variability against your balanced range, with a 4-week trend.'],
+  ['heartRate', 'Heart rate', "Resting heart rate, 7-day average, and today's ups and downs."],
+  ['weight', 'Weight', 'Your latest weigh-in, BMI, and a 4-week trend. Only shows if you use a scale or log it.'],
 ] as const;
 
 const SPORTS = [
@@ -95,6 +100,7 @@ export default function ConfigSection({ config, onChange }: PluginConfigSectionP
   const units = config.units === 'imperial' ? 'imperial' : 'metric';
   const sportFilter = (config.sportFilter as string) ?? 'all';
   const weeklyStyle = config.weeklyStyle === 'individual' ? 'individual' : 'bySport';
+  const weeklyWindow = config.weeklyWindow === 'rolling' ? 'rolling' : 'calendar';
   const activityCount = (config.activityCount as number) ?? 4;
   const refreshMs = String((config.refreshIntervalMs as number) ?? 900_000);
 
@@ -139,20 +145,29 @@ export default function ConfigSection({ config, onChange }: PluginConfigSectionP
         </Field>
       )}
 
-      {(view === 'activities' || view === 'latestActivity') && (
+      {(view === 'activities' || view === 'latestActivity' || view === 'weekly') && (
         <Field label="Sport">
           <Choices value={sportFilter} options={SPORTS} onPick={(v) => onChange({ sportFilter: v })} />
         </Field>
       )}
 
       {view === 'weekly' && (
-        <Field label="Weekly list">
-          <Choices
-            value={weeklyStyle}
-            options={[['bySport', 'Group by sport'], ['individual', 'List each workout']] as const}
-            onPick={(v) => onChange({ weeklyStyle: v })}
-          />
-        </Field>
+        <>
+          <Field label="Week">
+            <Choices
+              value={weeklyWindow}
+              options={[['calendar', 'This week (like Garmin)'], ['rolling', 'Last 7 days']] as const}
+              onPick={(v) => onChange({ weeklyWindow: v })}
+            />
+          </Field>
+          <Field label="Weekly list">
+            <Choices
+              value={weeklyStyle}
+              options={[['bySport', 'Group by sport'], ['individual', 'List each workout']] as const}
+              onPick={(v) => onChange({ weeklyStyle: v })}
+            />
+          </Field>
+        </>
       )}
 
       <Field label="Units">

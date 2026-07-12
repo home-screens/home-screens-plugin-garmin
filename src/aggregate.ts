@@ -30,14 +30,24 @@ function weekdayOf(isoDate: string): number {
   return new Date(`${isoDate}T12:00:00Z`).getUTCDay();
 }
 
-/** Rolling last-7-days rollup (today − 6 … today) — a rolling window rather
- *  than a calendar week, so the view is never nearly empty on a Monday. */
-export function weeklyRollup(activities: GarminActivity[], now: Date, timezone: string): WeeklyData {
+/** Start of the current calendar week for a user whose week begins on
+ *  `firstDay` (JS weekday index, 0 = Sunday). */
+export function weekStartIso(today: string, firstDay: number): string {
+  return isoDaysBefore(today, (weekdayOf(today) - firstDay + 7) % 7);
+}
+
+/** Calendar-week rollup: 7 days from `startIso` (the user's week start, so
+ *  totals match the Garmin app), with days after today left empty. Without
+ *  `startIso` it degrades to the rolling last-7-days window. */
+export function weeklyRollup(
+  activities: GarminActivity[], now: Date, timezone: string, startIso?: string,
+): WeeklyData {
   const today = todayIso(now, timezone);
+  const start = startIso ?? isoDaysBefore(today, 6);
   const days: WeeklyDay[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const key = isoDaysBefore(today, i);
-    days.push({ key, label: DAY_LETTERS[weekdayOf(key)], isToday: i === 0, bySport: {}, totalSeconds: 0 });
+  for (let i = 0; i < 7; i++) {
+    const key = isoDaysBefore(start, -i);
+    days.push({ key, label: DAY_LETTERS[weekdayOf(key)], isToday: key === today, bySport: {}, totalSeconds: 0 });
   }
   const byKey = new Map(days.map((d) => [d.key, d]));
   const totals = new Map<SportKey, SportTotal>();
@@ -63,6 +73,19 @@ export function weeklyRollup(activities: GarminActivity[], now: Date, timezone: 
 
   const sports = [...totals.values()].sort((x, y) => y.durationSeconds - x.durationSeconds);
   return { days, sports, totalSeconds, totalDistanceMeters, totalSessions };
+}
+
+/** One boolean per day for the last `days` days, oldest → newest: true when at
+ *  least one activity started that day. Backs the weekly view's 4-week strip. */
+export function consistencyDays(
+  activities: GarminActivity[], today: string, days = 28,
+): boolean[] {
+  const active = new Set<string>();
+  for (const a of activities) {
+    const d = dayOf(a.startLocal);
+    if (d) active.add(d);
+  }
+  return Array.from({ length: days }, (_, i) => active.has(isoDaysBefore(today, days - 1 - i)));
 }
 
 /** "Today" / "Yesterday" / "Tue" (≤6 days back) / "Jul 1" for list rows. */

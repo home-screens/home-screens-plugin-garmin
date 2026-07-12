@@ -111,14 +111,93 @@ export interface WeeklyData {
   totalSessions: number;
 }
 
+/** Latest snapshot from metrics-service/metrics/trainingreadiness/{date}.
+ *  Feedback fields are Garmin quality phrases (VERY_GOOD, MODERATE, ...). */
+export interface TrainingReadiness {
+  score: number;                        // 0–100
+  level: string;                        // POOR | LOW | MODERATE | HIGH | PRIME
+  feedback: string | null;              // e.g. LISTEN_TO_YOUR_BODY
+  sleepScore: number | null;
+  sleepFeedback: string | null;
+  recoveryMinutes: number | null;       // recovery time remaining
+  recoveryFeedback: string | null;
+  acuteLoad: number | null;
+  loadFeedback: string | null;
+  hrvWeeklyAverage: number | null;      // ms
+  hrvFeedback: string | null;
+  stressHistoryFeedback: string | null;
+  sleepHistoryFeedback: string | null;
+}
+
+/** trainingstatus/aggregated + hrv-service, folded to the primary device. */
+export interface TrainingStatusInfo {
+  status: string | null;                // PRODUCTIVE | MAINTAINING | ...
+  sinceDate: string | null;             // "2026-06-15"
+  trainingPaused: boolean;
+  loadFocus: string | null;             // e.g. AEROBIC_HIGH_SHORTAGE
+  acwrStatus: string | null;            // LOW | OPTIMAL | HIGH | VERY_HIGH
+  acuteLoad: number | null;
+  weeklyLoad: number | null;
+  loadTunnelMin: number | null;
+  loadTunnelMax: number | null;
+  vo2Max: number | null;
+  vo2MaxCycling: number | null;
+  fitnessAge: number | null;
+  hrvStatus: string | null;             // BALANCED | UNBALANCED | LOW | POOR
+  hrvWeeklyAvg: number | null;          // ms
+  hrvLastNight: number | null;          // ms
+}
+
+/** Current HRV status + 4-week nightly trend from hrv-service. All ms. */
+export interface HrvStatusInfo {
+  status: string | null;                // BALANCED | UNBALANCED | LOW | POOR
+  feedback: string | null;
+  lastNight: number | null;
+  lastNight5MinHigh: number | null;
+  weeklyAvg: number | null;
+  balancedLow: number | null;           // balanced-range floor
+  balancedUpper: number | null;
+  trend: { date: string; v: number }[]; // nightly avg, oldest → newest
+}
+
+/** This week's intensity minutes vs. the weekly goal (Garmin's goal is weekly). */
+export interface WeeklyIntensity {
+  minutes: number;              // moderate + 2×vigorous, week to date
+  goal: number | null;
+}
+
+/** Today's heart rate from wellness-service. Curve shape matches Body Battery. */
+export interface HeartRateDay {
+  resting: number | null;
+  sevenDayAvg: number | null;           // 7-day average resting HR
+  min: number | null;
+  max: number | null;
+  curve: { t: number; v: number }[];    // [epochMs, bpm]
+}
+
+/** Latest weigh-in + the 4-week trend from weight-service. Weights are kg
+ *  here (Garmin reports grams); the view converts to the user's units. This
+ *  is an opt-in view only — weight is never published to shared state. */
+export interface WeightInfo {
+  weightKg: number;                     // most recent weigh-in
+  changeKg: number | null;              // vs the previous weigh-in day
+  bmi: number | null;
+  trend: { date: string; kg: number }[]; // one point per weigh-in day, oldest → newest
+}
+
 export type SizeTier = 'compact' | 'medium' | 'large';
 
 export type GarminView =
-  | 'summary' | 'bodyBattery' | 'sleep' | 'activities' | 'latestActivity' | 'weekly';
+  | 'summary' | 'bodyBattery' | 'sleep' | 'activities' | 'latestActivity' | 'weekly'
+  | 'trainingReadiness' | 'trainingStatus' | 'hrv' | 'heartRate' | 'weight';
 export type Units = 'metric' | 'imperial';
 
 /** Weekly view's bottom section: per-sport totals or one row per workout. */
 export type WeeklyStyle = 'bySport' | 'individual';
+
+/** Weekly view's window: the Garmin calendar week (matches the Connect app)
+ *  or a rolling last-7-days window. */
+export type WeeklyWindow = 'calendar' | 'rolling';
 
 /** Props every view in src/views/ receives from the orchestrator. */
 export interface ViewProps {
@@ -128,7 +207,9 @@ export interface ViewProps {
   activityCount: number;
   tier: SizeTier;
   width: number;          // measured content-box width, px
+  height: number;         // measured content-box height, px
   sportFilter: SportFilter;
   weeklyStyle: WeeklyStyle;
+  weeklyWindow: WeeklyWindow;
   refreshMs: number;
 }

@@ -26,7 +26,7 @@ export async function getJson<T>(url: string, cacheTtlMs: number): Promise<T | n
 
 /** The display name keys several endpoints; cache it for the tab's lifetime. */
 let cachedDisplayName: string | null = null;
-async function getDisplayName(): Promise<string | null> {
+export async function getDisplayName(): Promise<string | null> {
   if (cachedDisplayName) return cachedDisplayName;
   const profile = await getJson<{ displayName?: string }>(
     `${BASE}/userprofile-service/socialProfile`,
@@ -36,8 +36,27 @@ async function getDisplayName(): Promise<string | null> {
   return cachedDisplayName;
 }
 
-function listCacheTtl(refreshMs: number): number {
+export function listCacheTtl(refreshMs: number): number {
   return Math.max(60_000, Math.min(refreshMs, 900_000));
+}
+
+const DAY_INDEX: Record<string, number> = {
+  sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6,
+};
+
+/** The user's "first day of week" Connect setting as a JS weekday index
+ *  (0 = Sunday). Falls back to Monday (Garmin's default) when unavailable.
+ *  Cached for the tab's lifetime — it effectively never changes. */
+let cachedFirstDay: number | null = null;
+export async function getFirstDayOfWeek(): Promise<number> {
+  if (cachedFirstDay != null) return cachedFirstDay;
+  const settings = await getJson<{ userData?: { firstDayOfWeek?: { dayName?: string } } }>(
+    `${BASE}/userprofile-service/userprofile/user-settings`,
+    3_600_000,
+  );
+  const name = settings?.userData?.firstDayOfWeek?.dayName?.toLowerCase();
+  cachedFirstDay = DAY_INDEX[name ?? ''] ?? 1;
+  return cachedFirstDay;
 }
 
 export async function fetchGarminData(
@@ -209,7 +228,8 @@ export function normalize(
     intensityMinutes,
     intensityMinutesGoal: summary?.intensityMinutesGoal ?? null,
     activeCalories: summary?.activeKilocalories ?? null,
-    floorsAscended: summary?.floorsAscended ?? null,
+    // Garmin reports fractional floors (barometer-derived); display whole ones.
+    floorsAscended: summary?.floorsAscended != null ? Math.round(summary.floorsAscended) : null,
     distanceMeters: summary?.totalDistanceMeters ?? null,
     hrv: sleep?.avgOvernightHrv ?? null,
     restlessMoments: sleep?.restlessMomentsCount ?? null,

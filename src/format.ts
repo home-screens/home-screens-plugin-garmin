@@ -20,10 +20,10 @@ export function formatDistance(meters: number, units: Units): string {
   return `${km.toFixed(km < 10 ? 2 : 1)} km`;
 }
 
-/** 8421 → "8,421". */
+/** 8421 → "8,421". Counts are whole things; fractional API values round. */
 export function formatCount(n: number | null): string {
   if (n == null) return '--';
-  return n.toLocaleString('en-US');
+  return Math.round(n).toLocaleString('en-US');
 }
 
 /** Epoch ms → "10:45 PM" in the given timezone. */
@@ -86,4 +86,51 @@ export function formatElevation(meters: number | null, units: Units): string {
 export function formatMinSec(seconds: number | null): string {
   if (!seconds || seconds <= 0) return '--';
   return mmss(seconds);
+}
+
+const LB_PER_KG = 2.2046226;
+
+/** kg → "72.4 kg" or "159.6 lb", one decimal (both units read fine on a wall). */
+export function formatWeight(kg: number, units: Units): string {
+  if (units === 'imperial') return `${(kg * LB_PER_KG).toFixed(1)} lb`;
+  return `${kg.toFixed(1)} kg`;
+}
+
+/** A signed weight change for the "since last weigh-in" caption: "+0.4 kg",
+ *  "-1.2 lb". Rounds-to-zero deltas read as "No change" (handled by the caller
+ *  via the returned "0.0"). */
+export function formatWeightDelta(kg: number, units: Units): string {
+  const v = units === 'imperial' ? kg * LB_PER_KG : kg;
+  const unit = units === 'imperial' ? 'lb' : 'kg';
+  const sign = v >= 0.05 ? '+' : v <= -0.05 ? '-' : '';
+  return `${sign}${Math.abs(v).toFixed(1)} ${unit}`;
+}
+
+/** Garmin feedback phrase → sentence: "LISTEN_TO_YOUR_BODY" → "Listen to your body". */
+export function sentencePhrase(phrase: string | null): string | null {
+  if (!phrase) return null;
+  const words = phrase.toLowerCase().replace(/_/g, ' ');
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** Load-focus phrases use Garmin's display word order ("High Aerobic
+ *  Shortage", not "Aerobic High Shortage"); unknown phrases title-case as-is. */
+const LOAD_FOCUS_LABELS: Record<string, string> = {
+  BALANCED: 'Balanced',
+  AEROBIC_LOW_SHORTAGE: 'Low Aerobic Shortage',
+  AEROBIC_HIGH_SHORTAGE: 'High Aerobic Shortage',
+  ANAEROBIC_SHORTAGE: 'Anaerobic Shortage',
+};
+export function loadFocusLabel(phrase: string | null): string | null {
+  if (!phrase) return null;
+  return LOAD_FOCUS_LABELS[phrase]
+    ?? phrase.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** "2026-06-15" → "Jun 15". Pinned to UTC so the calendar date never shifts. */
+export function formatShortDate(isoDate: string | null): string | null {
+  if (!isoDate) return null;
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
 }

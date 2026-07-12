@@ -8,15 +8,16 @@ import { formatMetric, matchesFilter, metricsFor, sportByKey, sportFor } from '.
 import { relativeDay } from '../aggregate';
 
 /** Rows: SportBadge, name + label + relative day, right-aligned metric trio
- *  (distance → sport primary metric → HR). Elevation joins at medium+.
- *  Large groups rows under relative-day headers. */
-export function ActivityListView({ data, units, timezone, activityCount, tier, sportFilter }: ViewProps) {
+ *  (distance → sport primary metric → HR → elevation). The list shows as many
+ *  rows as the measured height fits (~62px each) with a "+N more" line when
+ *  truncated, so it fills short and tall boxes alike instead of a fixed count. */
+export function ActivityListView({ data, units, timezone, activityCount, height, sportFilter }: ViewProps) {
   const now = new Date();
-  const rows = data.activities
+  const all = data.activities
     .filter((a) => matchesFilter(a.typeKey, sportFilter))
     .slice(0, activityCount);
 
-  if (rows.length === 0) {
+  if (all.length === 0) {
     const what = sportFilter === 'all' ? 'activities' : sportByKey(sportFilter).plural;
     return (
       <EmptyState
@@ -25,6 +26,15 @@ export function ActivityListView({ data, units, timezone, activityCount, tier, s
       />
     );
   }
+
+  // As many rows as fit; when truncated, one row's worth of space goes to the
+  // "+N more" line so it never overflows.
+  const ROW_H = 74, MORE_H = 26;
+  const fitAll = Math.floor(height / ROW_H) >= all.length;
+  const shownRows = fitAll
+    ? all.length
+    : Math.max(1, Math.floor((height - MORE_H) / ROW_H));
+  const hidden = all.length - shownRows;
 
   const row = (a: GarminActivity) => {
     const sport = sportFor(a.typeKey);
@@ -50,7 +60,7 @@ export function ActivityListView({ data, units, timezone, activityCount, tier, s
             {[
               primary,
               a.averageHr != null ? `${Math.round(a.averageHr)} bpm` : null,
-              tier !== 'compact' && a.elevationGain != null ? `↑ ${formatElevation(a.elevationGain, units)}` : null,
+              a.elevationGain != null ? `↑ ${formatElevation(a.elevationGain, units)}` : null,
             ].filter(Boolean).join(' · ')}
           </div>
         </div>
@@ -58,28 +68,12 @@ export function ActivityListView({ data, units, timezone, activityCount, tier, s
     );
   };
 
-  if (tier !== 'large') {
-    return <div style={{ display: 'flex', flexDirection: 'column' }}>{rows.map(row)}</div>;
-  }
-
-  // Large: group rows under relative-day headers, preserving order.
-  const groups: { day: string; items: GarminActivity[] }[] = [];
-  for (const a of rows) {
-    const day = relativeDay(a.startLocal, now, timezone) || 'Earlier';
-    const last = groups[groups.length - 1];
-    if (last && last.day === day) last.items.push(a);
-    else groups.push({ day, items: [a] });
-  }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      {groups.map((g) => (
-        <div key={g.day}>
-          <div style={{ fontSize: 12, opacity: 0.55, textTransform: 'uppercase', letterSpacing: 0.5, padding: '8px 0 2px' }}>
-            {g.day}
-          </div>
-          {g.items.map(row)}
-        </div>
-      ))}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      {all.slice(0, shownRows).map(row)}
+      {hidden > 0 && (
+        <div style={{ opacity: 0.5, fontSize: 12, paddingTop: 8 }}>+{hidden} more</div>
+      )}
     </div>
   );
 }

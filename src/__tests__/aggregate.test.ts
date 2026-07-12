@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { weeklyRollup, relativeDay, todayIso, isoDaysBefore } from '../aggregate';
+import {
+  consistencyDays, weeklyRollup, weekStartIso, relativeDay, todayIso, isoDaysBefore,
+} from '../aggregate';
 import type { GarminActivity } from '../types';
 
 // 2026-07-11T18:00Z = 13:00 CDT — "today" in Chicago is 2026-07-11 (a Saturday).
@@ -49,6 +51,50 @@ describe('weeklyRollup', () => {
 
   it('ignores activities with no start time', () => {
     expect(weeklyRollup([act({ startLocal: null })], NOW, TZ).totalSessions).toBe(0);
+  });
+
+  it('builds the calendar week from a start date, future days empty', () => {
+    // 2026-07-11 is a Saturday; Monday-start week runs Jul 6 – Jul 12.
+    const w = weeklyRollup([
+      act({ id: 1, startLocal: '2026-07-06 06:30:00' }),      // week start — kept
+      act({ id: 2, startLocal: '2026-07-05 06:30:00' }),      // last week — dropped
+    ], NOW, TZ, '2026-07-06');
+    expect(w.days[0].key).toBe('2026-07-06');
+    expect(w.days[6].key).toBe('2026-07-12');                  // tomorrow, empty
+    expect(w.days[5].isToday).toBe(true);
+    expect(w.days.map((d) => d.label)).toEqual(['M', 'T', 'W', 'T', 'F', 'S', 'S']);
+    expect(w.totalSessions).toBe(1);
+  });
+});
+
+describe('weekStartIso', () => {
+  it('finds the current week start for any first-day setting', () => {
+    // 2026-07-11 is a Saturday.
+    expect(weekStartIso('2026-07-11', 1)).toBe('2026-07-06'); // Monday start
+    expect(weekStartIso('2026-07-11', 0)).toBe('2026-07-05'); // Sunday start
+    expect(weekStartIso('2026-07-11', 6)).toBe('2026-07-11'); // Saturday start — today
+  });
+});
+
+describe('consistencyDays', () => {
+  it('marks days with at least one activity, oldest → newest, once per day', () => {
+    const d = consistencyDays([
+      act({ startLocal: '2026-07-11 06:30:00' }),   // today
+      act({ startLocal: '2026-07-11 18:00:00' }),   // today again — same dot
+      act({ startLocal: '2026-07-05 06:30:00' }),   // 6 days back
+      act({ startLocal: '2026-05-01 06:30:00' }),   // outside 28d — ignored
+      act({ startLocal: null }),                    // no start — ignored
+    ], '2026-07-11');
+    expect(d).toHaveLength(28);
+    expect(d[27]).toBe(true);                       // today is newest
+    expect(d[21]).toBe(true);                       // 6 days back
+    expect(d.filter(Boolean)).toHaveLength(2);
+  });
+
+  it('is all-false with no activities', () => {
+    const d = consistencyDays([], '2026-07-11');
+    expect(d).toHaveLength(28);
+    expect(d.filter(Boolean)).toHaveLength(0);
   });
 });
 

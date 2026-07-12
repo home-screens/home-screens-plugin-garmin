@@ -6,7 +6,7 @@ const RAW_SUMMARY = {
   restingHeartRate: 52, averageStressLevel: 30,
   bodyBatteryMostRecentValue: 78, bodyBatteryHighestValue: 95, bodyBatteryLowestValue: 20,
   activeKilocalories: 640, moderateIntensityMinutes: 30, vigorousIntensityMinutes: 20,
-  intensityMinutesGoal: 150, floorsAscended: 12, totalDistanceMeters: 6400,
+  intensityMinutesGoal: 150, floorsAscended: 4.11942, totalDistanceMeters: 6400,
 };
 const RAW_SLEEP = {
   dailySleepDTO: {
@@ -39,7 +39,7 @@ describe('normalize', () => {
     expect(data.activeCalories).toBe(640);
     expect(data.intensityMinutes).toBe(70); // 30 + 2×20
     expect(data.intensityMinutesGoal).toBe(150);
-    expect(data.floorsAscended).toBe(12);
+    expect(data.floorsAscended).toBe(4); // fractional barometer floors round
     expect(data.distanceMeters).toBe(6400);
     // v2 sleep fields
     expect(data.hrv).toBe(48);

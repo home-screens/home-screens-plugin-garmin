@@ -4,3 +4,8 @@ export { SleepView } from './sleep';
 export { ActivityListView } from './activity-list';
 export { ActivityHeroView } from './activity-hero';
 export { WeeklyView } from './weekly';
+export { TrainingReadinessView } from './training-readiness';
+export { TrainingStatusView } from './training-status';
+export { HrvView } from './hrv';
+export { HeartRateView } from './heart-rate';
+export { WeightView } from './weight';

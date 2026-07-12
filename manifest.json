@@ -20,6 +20,7 @@
     "activityCount": 4,
     "sportFilter": "all",
     "weeklyStyle": "bySport",
+    "weeklyWindow": "calendar",
     "refreshIntervalMs": 900000
   },
 
@@ -37,8 +38,8 @@
         "type": "string",
         "title": "View",
         "ui:widget": "select",
-        "enum": ["summary", "bodyBattery", "sleep", "activities", "latestActivity", "weekly"],
-        "enumLabels": ["Daily summary", "Body Battery", "Sleep", "Activities", "Latest activity", "Weekly training"],
+        "enum": ["summary", "bodyBattery", "sleep", "activities", "latestActivity", "weekly", "trainingReadiness", "trainingStatus", "hrv", "heartRate", "weight"],
+        "enumLabels": ["Daily summary", "Body Battery", "Sleep", "Activities", "Latest activity", "Weekly training", "Training readiness", "Training status", "HRV status", "Heart rate", "Weight"],
         "ui:group": "Layout"
       },
       "units": {
@@ -62,7 +63,7 @@
       "sportFilter": {
         "type": "string",
         "title": "Sport",
-        "description": "Applies to the Latest activity and Activities views.",
+        "description": "Applies to the Activities, Latest activity, and Weekly training views.",
         "ui:widget": "select",
         "enum": ["all", "running", "cycling", "swimming", "walking", "hiking", "strength"],
         "enumLabels": ["All sports", "Running", "Cycling", "Swimming", "Walking", "Hiking", "Strength"],
@@ -74,6 +75,15 @@
         "ui:widget": "select",
         "enum": ["bySport", "individual"],
         "enumLabels": ["Group by sport", "List each workout"],
+        "ui:group": "Layout",
+        "ui:showWhen": { "field": "view", "equals": "weekly" }
+      },
+      "weeklyWindow": {
+        "type": "string",
+        "title": "Week",
+        "ui:widget": "select",
+        "enum": ["calendar", "rolling"],
+        "enumLabels": ["This week (like Garmin)", "Last 7 days"],
         "ui:group": "Layout",
         "ui:showWhen": { "field": "view", "equals": "weekly" }
       },

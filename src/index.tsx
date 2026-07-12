@@ -1,15 +1,17 @@
 import React from 'react';
 import type { PluginComponentProps } from './hs-plugin';
-import type { GarminView, SportFilter, Units, ViewProps, WeeklyStyle } from './types';
+import type { GarminView, SportFilter, Units, ViewProps, WeeklyStyle, WeeklyWindow } from './types';
 import { useGarminData, useConnection, useModuleSize } from './hooks';
 import { PLUGIN_ID, stateValues, deriveProvidedKeys } from './shared-state';
 import { EmptyState } from './components';
 import {
   SummaryView, BodyBatteryView, SleepView, ActivityListView, ActivityHeroView, WeeklyView,
+  TrainingReadinessView, TrainingStatusView, HrvView, HeartRateView, WeightView,
 } from './views';
 
 const VALID_VIEWS = new Set<string>([
   'summary', 'bodyBattery', 'sleep', 'activities', 'latestActivity', 'weekly',
+  'trainingReadiness', 'trainingStatus', 'hrv', 'heartRate', 'weight',
 ]);
 const VALID_FILTERS = new Set<string>([
   'all', 'running', 'cycling', 'swimming', 'walking', 'hiking', 'strength',
@@ -23,6 +25,7 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
   const sportFilter = (VALID_FILTERS.has(config.sportFilter as string)
     ? config.sportFilter : 'all') as SportFilter;
   const weeklyStyle: WeeklyStyle = config.weeklyStyle === 'individual' ? 'individual' : 'bySport';
+  const weeklyWindow: WeeklyWindow = config.weeklyWindow === 'rolling' ? 'rolling' : 'calendar';
   // The host does not pass a timezone prop; the display's timezone lives in
   // host settings. A UTC fallback silently asks Garmin for tomorrow's data
   // every evening (date-keyed endpoints return empty for future dates).
@@ -36,7 +39,7 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
 
   const connected = useConnection();
   const load = useGarminData(connected === true, tz, fetchCount, refreshMs);
-  const { ref, tier, width } = useModuleSize();
+  const { ref, tier, width, height } = useModuleSize();
 
   // Publish shared-state keys whenever fresh data lands.
   React.useEffect(() => {
@@ -79,7 +82,8 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
     if (load.status === 'error') return <EmptyState title="Can't reach Garmin" body={load.message} />;
 
     const props: ViewProps = {
-      data: load.data, units, timezone: tz, activityCount, tier, width, sportFilter, weeklyStyle, refreshMs,
+      data: load.data, units, timezone: tz, activityCount, tier, width, height,
+      sportFilter, weeklyStyle, weeklyWindow, refreshMs,
     };
     switch (view) {
       case 'bodyBattery': return <BodyBatteryView {...props} />;
@@ -87,6 +91,11 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
       case 'activities': return <ActivityListView {...props} />;
       case 'latestActivity': return <ActivityHeroView {...props} />;
       case 'weekly': return <WeeklyView {...props} />;
+      case 'trainingReadiness': return <TrainingReadinessView {...props} />;
+      case 'trainingStatus': return <TrainingStatusView {...props} />;
+      case 'hrv': return <HrvView {...props} />;
+      case 'heartRate': return <HeartRateView {...props} />;
+      case 'weight': return <WeightView {...props} />;
       default: return <SummaryView {...props} />;
     }
   }

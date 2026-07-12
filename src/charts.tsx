@@ -135,6 +135,41 @@ export function DayBars({ days, height }: { days: WeeklyDay[]; height: number })
   );
 }
 
+// ─── BandLineChart ──────────────────────────────────────────────────
+/** Min/max-scaled line (unlike Sparkline's fixed 0–100 axis) with an optional
+ *  horizontal reference band behind it — nightly HRV against the balanced
+ *  range, or today's heart rate with no band. */
+export function BandLineChart({ points, width, height, color, band }: {
+  points: { t: number; v: number }[];
+  width: number; height: number; color: string;
+  band?: { low: number; high: number };
+}) {
+  if (points.length < 2) return <div style={{ height, opacity: 0.4, fontSize: 12 }}>No trend yet</div>;
+  const vs = points.map((p) => p.v);
+  const lo = Math.min(...vs, band?.low ?? Infinity);
+  const hi = Math.max(...vs, band?.high ?? -Infinity);
+  const pad = (hi - lo || 1) * 0.12;
+  const minV = lo - pad;
+  const spanV = hi + pad - minV;
+  const xs = points.map((p) => p.t);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  const sx = (t: number) => ((t - minX) / (maxX - minX || 1)) * width;
+  const sy = (v: number) => height - ((v - minV) / spanV) * height;
+  const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.t).toFixed(1)} ${sy(p.v).toFixed(1)}`).join(' ');
+  return (
+    <svg width={width} height={height} style={{ maxWidth: '100%' }}>
+      {band && (
+        <rect
+          x={0} y={sy(band.high)} width={width}
+          height={Math.max(0, sy(band.low) - sy(band.high))}
+          fill={PALETTE.bodyBattery} opacity={0.14}
+        />
+      )}
+      <path d={line} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 // ─── SportBadge ─────────────────────────────────────────────────────
 /** Geometric stroke glyphs — no emoji (household rule); unknown sports fall
  *  back to 3-letter label initials. */

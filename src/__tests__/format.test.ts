@@ -24,6 +24,7 @@ describe('formatDistance', () => {
 
 describe('formatCount', () => {
   it('groups thousands', () => expect(formatCount(8421)).toBe('8,421'));
+  it('rounds fractional API values', () => expect(formatCount(640.53)).toBe('641'));
   it('renders -- for null', () => expect(formatCount(null)).toBe('--'));
 });
 
