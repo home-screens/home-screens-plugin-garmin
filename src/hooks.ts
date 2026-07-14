@@ -1,12 +1,13 @@
 import React from 'react';
 import type {
-  ActivityDetail, GarminActivity, GarminData, HeartRateDay, HrvStatusInfo, SizeTier,
-  Split, Traces, TrainingReadiness, TrainingStatusInfo, WeeklyIntensity, WeightInfo, Zone,
+  ActivityDetail, GarminActivity, GarminData, HeartRateDay, HrvStatusInfo, PersonalRecord,
+  RacePredictions, SizeTier, Split, Traces, TrainingReadiness, TrainingStatusInfo,
+  WeeklyIntensity, WeightInfo, Zone,
 } from './types';
 import { fetchGarminData, fetchActivitiesRange, getFirstDayOfWeek, AuthExpiredError } from './api';
 import {
-  fetchHeartRate, fetchHrvStatus, fetchStepsStreak, fetchTrainingReadiness, fetchTrainingStatus,
-  fetchWeeklyIntensity, fetchWeight,
+  fetchHeartRate, fetchHrvStatus, fetchPersonalRecords, fetchRacePredictions, fetchStepsStreak,
+  fetchTrainingReadiness, fetchTrainingStatus, fetchWeeklyIntensity, fetchWeight,
 } from './api-metrics';
 import {
   fetchActivityDetail, fetchActivitySplits, fetchActivityZones, fetchActivityTraces,
@@ -318,6 +319,18 @@ export function useWeight(
   timezone: string, refreshMs: number,
 ): MetricsLoadState<WeightInfo> {
   return useMetricsFetch('garmin:weight', fetchWeight, timezone, refreshMs);
+}
+
+export function useRacePredictions(
+  timezone: string, refreshMs: number,
+): MetricsLoadState<RacePredictions> {
+  return useMetricsFetch('garmin:racePredictions', fetchRacePredictions, timezone, refreshMs);
+}
+
+export function usePersonalRecords(
+  timezone: string, refreshMs: number,
+): MetricsLoadState<PersonalRecord[]> {
+  return useMetricsFetch('garmin:records', fetchPersonalRecords, timezone, refreshMs);
 }
 
 export function useStepsStreak(

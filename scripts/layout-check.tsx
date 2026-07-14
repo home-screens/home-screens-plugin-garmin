@@ -75,17 +75,20 @@ const ACTIVITIES = Array.from({ length: 16 }, (_, i) => {
   };
 });
 
-// Daily-bundle fields the summary, body-battery, and sleep views read.
+// Daily-bundle fields the summary, body-battery, stress, and sleep views read.
 const DATA = {
   steps: 308, stepGoal: 4220, intensityMinutes: 0, intensityMinutesGoal: 150,
   restingHr: 71, stress: 34, sleepScore: 70, activeCalories: 8, calories: 1450,
   floorsAscended: 0, distanceMeters: 322,
+  maxStress: 88, stressQualifier: 'BALANCED',
+  stressBreakdown: { rest: 28_800, low: 14_400, medium: 3_600, high: 900 },
   bodyBattery: 39, bodyBatteryHigh: 61, bodyBatteryLow: 12,
   bodyBatteryCharged: 27, bodyBatteryDrained: 0,
   sleepTotalSeconds: 26_760, sleepDeep: 5_400, sleepLight: 15_000,
   sleepRem: 5_160, sleepAwake: 1_200,
   sleepStart: Date.parse('2026-07-11T22:48:00Z'), sleepEnd: Date.parse('2026-07-12T06:14:00Z'),
   hrv: 42, restlessMoments: 18, sleepBodyBatteryChange: 34,
+  sleepSpo2: 94.6, sleepRespiration: 14.2, sleepNeedMinutes: 480, skinTempDeviationC: -0.4,
   activities: ACTIVITIES,
   bodyBatteryCurve: Array.from({ length: 60 }, (_, i) => ({
     t: i * 900_000, v: Math.round(12 + i * 0.45),
@@ -135,6 +138,23 @@ const cache = new Map<string, unknown>([
       kg: Math.round((79.6 - i * 0.09 + (i % 3) * 0.2) * 10) / 10,
     })),
   }],
+  ['garmin:racePredictions', { fiveK: 1421, tenK: 2988, half: 6603, marathon: 13911 }],
+  ['garmin:records', [
+    { typeId: 1, value: 263.7, date: '2026-03-14' },
+    { typeId: 2, value: 447.1, date: '2026-03-14' },
+    { typeId: 3, value: 1421.2, date: '2026-05-02' },
+    { typeId: 4, value: 2988.7, date: '2026-04-11' },
+    { typeId: 7, value: 21_098, date: '2025-10-05' },
+    { typeId: 8, value: 64_371, date: '2025-08-17' },
+    { typeId: 9, value: 3_097, date: '2025-08-17' },
+    { typeId: 10, value: 286.08, date: '2025-09-01' },
+    { typeId: 17, value: 2_012, date: '2025-07-02' },
+    { typeId: 12, value: 31_240, date: '2024-06-08' },
+    { typeId: 13, value: 148_315, date: '2024-06-14' },
+    { typeId: 14, value: 512_240, date: '2024-06-30' },
+    { typeId: 15, value: 34, date: '2024-07-04' },
+    { typeId: 16, value: 3, date: '2026-07-12' },
+  ]],
 ]);
 (globalThis as Record<string, unknown>).window = {
   __HS_SDK__: {
@@ -156,6 +176,9 @@ const { SleepView } = await import('../src/views/sleep');
 const { ActivityListView } = await import('../src/views/activity-list');
 const { ActivityHeroView } = await import('../src/views/activity-hero');
 const { WeightView } = await import('../src/views/weight');
+const { StressView } = await import('../src/views/stress');
+const { RacePredictionsView } = await import('../src/views/race-predictions');
+const { RecordsView } = await import('../src/views/records');
 const { tierFor } = await import('../src/size');
 
 // ─── Matrix ─────────────────────────────────────────────────────────
@@ -182,6 +205,9 @@ const VIEWS: [string, React.ComponentType<Record<string, unknown>>][] = [
   ['activity-list', ActivityListView],
   ['activity-hero', ActivityHeroView],
   ['weight', WeightView],
+  ['stress', StressView],
+  ['race-predictions', RacePredictionsView],
+  ['records', RecordsView],
 ];
 // Text-only card: at very tall sizes it has nothing more to show, so the
 // dead-space budget doesn't apply there (overflow still checked).

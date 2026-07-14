@@ -1,6 +1,6 @@
 import type {
-  HeartRateDay, HrvStatusInfo, TrainingReadiness, TrainingStatusInfo, WeeklyIntensity,
-  WeightInfo,
+  HeartRateDay, HrvStatusInfo, PersonalRecord, RacePredictions, TrainingReadiness,
+  TrainingStatusInfo, WeeklyIntensity, WeightInfo,
 } from './types';
 import { getJson, getDisplayName, listCacheTtl, BASE } from './api';
 import { todayIso, isoDaysBefore } from './aggregate';
@@ -123,6 +123,26 @@ interface RawStepDay {
   stepGoal?: number;
 }
 
+/** metrics-service/metrics/racepredictions/latest/{displayName} — times in
+ *  seconds; distances the model can't predict yet come back null. */
+interface RawRacePredictions {
+  calendarDate?: string;
+  time5K?: number | null;
+  time10K?: number | null;
+  timeHalfMarathon?: number | null;
+  timeMarathon?: number | null;
+}
+
+/** personalrecord-service/personalrecord/prs/{displayName} — one entry per
+ *  current record. prStartTimeLocal is epoch ms; the Formatted twin is an
+ *  ISO-ish local string. Manually assigned records can report 0/absent. */
+interface RawPersonalRecord {
+  typeId?: number;
+  value?: number | null;
+  prStartTimeLocal?: number | null;
+  prStartTimeLocalFormatted?: string | null;
+}
+
 // --- Fetchers ---
 
 export async function fetchTrainingReadiness(
@@ -229,6 +249,33 @@ export async function fetchStepsStreak(
   ));
   if (chunks.every((c) => c == null)) return null;
   return stepStreak(chunks.flatMap((c) => c ?? []), today);
+}
+
+/** Latest predicted race times. Race predictions move on a days timescale;
+ *  the metrics TTL is fine. */
+export async function fetchRacePredictions(
+  _timezone: string, refreshMs: number,
+): Promise<RacePredictions | null> {
+  const displayName = await getDisplayName();
+  if (!displayName) return null;
+  const raw = await getJson<RawRacePredictions>(
+    `${BASE}/metrics-service/metrics/racepredictions/latest/${encodeURIComponent(displayName)}`,
+    metricsTtl(refreshMs),
+  );
+  return normalizeRacePredictions(raw);
+}
+
+/** Current personal records. Records change rarely; the metrics TTL is fine. */
+export async function fetchPersonalRecords(
+  _timezone: string, refreshMs: number,
+): Promise<PersonalRecord[] | null> {
+  const displayName = await getDisplayName();
+  if (!displayName) return null;
+  const raw = await getJson<RawPersonalRecord[]>(
+    `${BASE}/personalrecord-service/personalrecord/prs/${encodeURIComponent(displayName)}`,
+    metricsTtl(refreshMs),
+  );
+  return normalizePersonalRecords(raw);
 }
 
 // --- Normalizers ---
@@ -363,6 +410,40 @@ export function normalizeHrv(raw: RawHrvRange | null): HrvStatusInfo | null {
       .filter((s): s is RawHrvSummary & { lastNightAvg: number } => s.lastNightAvg != null)
       .map((s) => ({ date: s.calendarDate as string, v: s.lastNightAvg })),
   };
+}
+
+/** Null when the model has predicted nothing yet (no run history). */
+export function normalizeRacePredictions(raw: RawRacePredictions | null): RacePredictions | null {
+  if (!raw) return null;
+  const p: RacePredictions = {
+    fiveK: raw.time5K ?? null,
+    tenK: raw.time10K ?? null,
+    half: raw.timeHalfMarathon ?? null,
+    marathon: raw.timeMarathon ?? null,
+  };
+  const empty = p.fiveK == null && p.tenK == null && p.half == null && p.marathon == null;
+  return empty ? null : p;
+}
+
+/** Drops unusable rows (no typeId or non-positive value). The date prefers
+ *  the epoch timestamp; manually assigned records report 0 there, so fall
+ *  back to the formatted local string's date part, then to no date. */
+export function normalizePersonalRecords(raw: RawPersonalRecord[] | null): PersonalRecord[] | null {
+  if (!raw) return null;
+  const records = raw
+    .filter((r): r is RawPersonalRecord & { typeId: number; value: number } =>
+      r.typeId != null && r.value != null && r.value > 0)
+    .map((r) => ({ typeId: r.typeId, value: r.value, date: recordDate(r) }));
+  return records.length > 0 ? records : null;
+}
+
+function recordDate(r: RawPersonalRecord): string | null {
+  if (r.prStartTimeLocal != null && r.prStartTimeLocal > 0) {
+    return new Date(r.prStartTimeLocal).toISOString().slice(0, 10);
+  }
+  const formatted = r.prStartTimeLocalFormatted;
+  if (formatted && /^\d{4}-\d{2}-\d{2}/.test(formatted)) return formatted.slice(0, 10);
+  return null;
 }
 
 export function normalizeWeeklyIntensity(raw: RawWeeklyIm[] | null): WeeklyIntensity | null {

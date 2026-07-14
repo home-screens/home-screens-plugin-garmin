@@ -3,6 +3,7 @@ import type { MetricSource, ViewProps } from '../types';
 import { PALETTE } from '../theme';
 import { EmptyState, StatTile } from '../components';
 import { SportBadgeFor, SplitsTable, TraceChart, ZoneBars } from '../charts';
+import { formatDistance } from '../format';
 import { formatMetric, matchesFilter, metricsFor, sportByKey, sportFor } from '../sports';
 import { relativeDay } from '../aggregate';
 import { useActivityDetail } from '../hooks';
@@ -83,7 +84,7 @@ export function ActivityHeroView({ data, units, timezone, width, height, sportFi
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: G }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <SportBadgeFor typeKey={activity.typeKey} size={compact ? 44 : 52} />
-        <div style={{ minWidth: 0 }}>
+        <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: compact ? 18 : 22, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {activity.name}
           </div>
@@ -91,6 +92,16 @@ export function ActivityHeroView({ data, units, timezone, width, height, sportFi
             {sport.label} · {relativeDay(activity.startLocal, new Date(), timezone)}
           </div>
         </div>
+        {source.distanceMeters > 0 && (
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Distance
+            </div>
+            <div style={{ fontSize: compact ? 24 : 30, fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+              {formatDistance(source.distanceMeters, units)}
+            </div>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14 }}>

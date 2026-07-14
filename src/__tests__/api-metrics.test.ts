@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
-  normalizeHeartRate, normalizeHrv, normalizeReadiness, normalizeTrainingStatus,
-  normalizeWeeklyIntensity, normalizeWeight, stepStreak,
+  normalizeHeartRate, normalizeHrv, normalizePersonalRecords, normalizeRacePredictions,
+  normalizeReadiness, normalizeTrainingStatus, normalizeWeeklyIntensity, normalizeWeight,
+  stepStreak,
 } from '../api-metrics';
 import {
   sentencePhrase, loadFocusLabel, formatShortDate, formatWeight, formatWeightDelta,
@@ -379,5 +380,52 @@ describe('metric phrase formatting', () => {
     expect(formatShortDate('2026-06-21')).toBe('Jun 21');
     expect(formatShortDate(null)).toBeNull();
     expect(formatShortDate('not-a-date')).toBeNull();
+  });
+});
+
+// Field names mirror the racepredictions/latest shape used by client
+// libraries (times in seconds; unpredicted distances are null).
+describe('normalizeRacePredictions', () => {
+  it('maps predicted times and keeps unpredicted distances null', () => {
+    const p = normalizeRacePredictions({
+      calendarDate: '2026-07-12',
+      time5K: 1421, time10K: 2988, timeHalfMarathon: 6603, timeMarathon: null,
+    });
+    expect(p).toEqual({ fiveK: 1421, tenK: 2988, half: 6603, marathon: null });
+  });
+
+  it('returns null when nothing is predicted yet or the fetch failed', () => {
+    expect(normalizeRacePredictions(null)).toBeNull();
+    expect(normalizeRacePredictions({ calendarDate: '2026-07-12' })).toBeNull();
+  });
+});
+
+describe('normalizePersonalRecords', () => {
+  it('keeps usable rows and derives the date from the epoch timestamp', () => {
+    const records = normalizePersonalRecords([
+      { typeId: 3, value: 1421.2, prStartTimeLocal: 1739000000000 },
+      { typeId: 7, value: 21098, prStartTimeLocal: 0, prStartTimeLocalFormatted: '2025-10-05T07:30:00.0' },
+    ]);
+    expect(records).toEqual([
+      { typeId: 3, value: 1421.2, date: '2025-02-08' },
+      { typeId: 7, value: 21098, date: '2025-10-05' },
+    ]);
+  });
+
+  it('drops rows without a typeId or a positive value', () => {
+    expect(normalizePersonalRecords([
+      { value: 12 },
+      { typeId: 12, value: 0 },
+      { typeId: 13, value: null },
+    ])).toBeNull();
+    expect(normalizePersonalRecords(null)).toBeNull();
+    expect(normalizePersonalRecords([])).toBeNull();
+  });
+
+  it('leaves the date null when both timestamp forms are unusable', () => {
+    const records = normalizePersonalRecords([
+      { typeId: 15, value: 34, prStartTimeLocal: 0, prStartTimeLocalFormatted: null },
+    ]);
+    expect(records).toEqual([{ typeId: 15, value: 34, date: null }]);
   });
 });

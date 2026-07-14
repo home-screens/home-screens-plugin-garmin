@@ -8,7 +8,8 @@ Requires Home Screens 1.8.0 or newer (the release that added host-managed sign-i
 
 - **Daily summary** — steps progress ring with this week's intensity minutes against your weekly goal, plus Body Battery, resting heart rate, stress, and sleep score tiles
 - **Body Battery** — current level gauge, charged/drained totals, and today's trend with stress overlay
-- **Sleep** — total duration, sleep-stage bar (deep/light/REM/awake), HRV and restlessness, and bed/wake times
+- **Stress** — today's average stress level with time spent at each level (rest/low/medium/high) and the day's curve
+- **Sleep** — total duration, sleep-stage bar (deep/light/REM/awake), HRV and restlessness, bed/wake times, and (on watches that report them) overnight SpO2, breathing rate, and sleep need
 - **Activities** — recent workouts with sport icons, distance, pace or speed, and heart rate
 - **Latest activity** — your newest workout in detail: sport-specific stats, heart-rate and elevation chart, HR zones, and splits
 - **Weekly training** — this week's per-day activity chart plus totals by sport, using your Garmin first-day-of-week setting so the numbers match the Connect app (or switch it to a rolling last-7-days window)
@@ -16,6 +17,8 @@ Requires Home Screens 1.8.0 or newer (the release that added host-managed sign-i
 - **Training status** — whether your training is paying off (Productive, Maintaining, ...), plus load focus, HRV status, VO2 max, and your 7-day load against the optimal range
 - **HRV status** — last night's heart rate variability against your balanced range, with a 4-week trend
 - **Heart rate** — resting heart rate, 7-day average, and today's heart-rate line
+- **Race predictions** — your watch's predicted 5K, 10K, half-marathon, and marathon times with their paces
+- **Personal records** — your best efforts, grouped by sport: fastest runs, longest run/ride/swim, and step records
 - **Weight** — your latest weigh-in with the change since last time, BMI, and a 4-week trend (only appears if you weigh in with a Garmin scale or log it in the Connect app); you add this view yourself, and weight is never shared with other modules
 
 The training and HRV views need a watch that records those metrics (most newer Garmin watches do); the module explains when yours doesn't.

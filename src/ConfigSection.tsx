@@ -4,6 +4,7 @@ import type { PluginConfigSectionProps } from './hs-plugin';
 const VIEWS = [
   ['summary', 'Daily summary', 'Steps ring with Body Battery, resting heart rate, stress, and sleep score.'],
   ['bodyBattery', 'Body Battery', "Current Body Battery with today's charge, drain, and stress trend."],
+  ['stress', 'Stress', "Today's average stress, time at each level, and the day's curve."],
   ['sleep', 'Sleep', "Last night's sleep stages, duration, and bed/wake times."],
   ['activities', 'Activities', 'Your most recent workouts with distance, time, and heart rate.'],
   ['latestActivity', 'Latest activity', 'A closer look at your newest workout: stats, charts, and splits.'],
@@ -12,6 +13,8 @@ const VIEWS = [
   ['trainingStatus', 'Training status', 'Whether your training is paying off, with training load and VO2 max.'],
   ['hrv', 'HRV status', 'Overnight heart rate variability against your balanced range, with a 4-week trend.'],
   ['heartRate', 'Heart rate', "Resting heart rate, 7-day average, and today's ups and downs."],
+  ['racePredictions', 'Race predictions', "Your watch's predicted 5K, 10K, half-marathon, and marathon times."],
+  ['records', 'Personal records', 'Your best efforts: fastest runs, longest run, ride, and swim, and step records.'],
   ['weight', 'Weight', 'Your latest weigh-in, BMI, and a 4-week trend. Only shows if you use a scale or log it.'],
 ] as const;
 

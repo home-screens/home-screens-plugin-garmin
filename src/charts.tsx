@@ -27,7 +27,13 @@ export function TraceChart({ traces, width, height }: { traces: Traces; width: n
     pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${sx(p.x).toFixed(1)} ${sy(p.v).toFixed(1)}`).join(' ');
 
   return (
-    <svg width={width} height={height} style={{ maxWidth: '100%' }}>
+    // viewBox + preserveAspectRatio: when CSS clamps the element narrower
+    // than the coordinate width (mid-resize), the drawing scales instead of
+    // clipping off the right edge.
+    <svg
+      width={width} height={height} viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none" style={{ maxWidth: '100%' }}
+    >
       {hasElev && (
         <path
           d={`${path(traces.elevation, scaleY(traces.elevation, 6))} L ${width} ${height} L 0 ${height} Z`}

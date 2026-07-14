@@ -7,11 +7,13 @@ import { EmptyState } from './components';
 import {
   SummaryView, BodyBatteryView, SleepView, ActivityListView, ActivityHeroView, WeeklyView,
   TrainingReadinessView, TrainingStatusView, HrvView, HeartRateView, WeightView,
+  StressView, RacePredictionsView, RecordsView,
 } from './views';
 
 const VALID_VIEWS = new Set<string>([
   'summary', 'bodyBattery', 'sleep', 'activities', 'latestActivity', 'weekly',
   'trainingReadiness', 'trainingStatus', 'hrv', 'heartRate', 'weight',
+  'stress', 'racePredictions', 'records',
 ]);
 const VALID_FILTERS = new Set<string>([
   'all', 'running', 'cycling', 'swimming', 'walking', 'hiking', 'strength',
@@ -96,6 +98,9 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
       case 'hrv': return <HrvView {...props} />;
       case 'heartRate': return <HeartRateView {...props} />;
       case 'weight': return <WeightView {...props} />;
+      case 'stress': return <StressView {...props} />;
+      case 'racePredictions': return <RacePredictionsView {...props} />;
+      case 'records': return <RecordsView {...props} />;
       default: return <SummaryView {...props} />;
     }
   }

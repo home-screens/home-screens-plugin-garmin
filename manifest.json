@@ -38,8 +38,8 @@
         "type": "string",
         "title": "View",
         "ui:widget": "select",
-        "enum": ["summary", "bodyBattery", "sleep", "activities", "latestActivity", "weekly", "trainingReadiness", "trainingStatus", "hrv", "heartRate", "weight"],
-        "enumLabels": ["Daily summary", "Body Battery", "Sleep", "Activities", "Latest activity", "Weekly training", "Training readiness", "Training status", "HRV status", "Heart rate", "Weight"],
+        "enum": ["summary", "bodyBattery", "stress", "sleep", "activities", "latestActivity", "weekly", "trainingReadiness", "trainingStatus", "hrv", "heartRate", "racePredictions", "records", "weight"],
+        "enumLabels": ["Daily summary", "Body Battery", "Stress", "Sleep", "Activities", "Latest activity", "Weekly training", "Training readiness", "Training status", "HRV status", "Heart rate", "Race predictions", "Personal records", "Weight"],
         "ui:group": "Layout"
       },
       "units": {

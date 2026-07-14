@@ -2,14 +2,17 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type {
-  HeartRateDay, HrvStatusInfo, SizeTier, TrainingReadiness, TrainingStatusInfo, ViewProps,
-  WeightInfo,
+  HeartRateDay, HrvStatusInfo, PersonalRecord, RacePredictions, SizeTier, TrainingReadiness,
+  TrainingStatusInfo, ViewProps, WeightInfo,
 } from '../types';
 import { TrainingReadinessView } from '../views/training-readiness';
 import { TrainingStatusView } from '../views/training-status';
 import { HrvView } from '../views/hrv';
 import { HeartRateView } from '../views/heart-rate';
 import { WeightView } from '../views/weight';
+import { StressView } from '../views/stress';
+import { RacePredictionsView } from '../views/race-predictions';
+import { RecordsView } from '../views/records';
 
 /* Server-render exercises the full ready path (the metrics hooks seed
  * synchronously from displayCache), so a crash or "--" soup in any tier
@@ -252,5 +255,137 @@ describe('WeightView', () => {
     cache.set('garmin:weight', null);
     const html = renderToStaticMarkup(<WeightView {...props('medium')} />);
     expect(html).toContain('No weight entries yet');
+  });
+});
+
+// ─── Stress ─────────────────────────────────────────────────────────
+
+const STRESS_DATA = {
+  stress: 34, maxStress: 88, stressQualifier: 'BALANCED',
+  stressBreakdown: { rest: 28800, low: 14400, medium: 3600, high: 900 },
+  stressCurve: [{ t: 1, v: 25 }, { t: 2, v: 44 }, { t: 3, v: 31 }],
+} as Partial<ViewProps['data']> as ViewProps['data'];
+
+describe('StressView', () => {
+  it.each(TIERS)('renders the ready state at %s tier', (tier) => {
+    const html = renderToStaticMarkup(<StressView {...props(tier)} data={STRESS_DATA} />);
+    expect(html).toContain('34');
+    expect(html).toContain('Balanced');
+    if (tier !== 'compact') {
+      expect(html).toContain('Rest');
+      expect(html).toContain('8h 0m');
+      expect(html).toContain('Today');
+    }
+    expect(html).not.toContain('--');
+  });
+
+  it('renders side-by-side panes on a wide-short box', () => {
+    const html = renderToStaticMarkup(<StressView {...wideProps()} data={STRESS_DATA} />);
+    expect(html).toContain('34');
+    expect(html).toContain('Rest');
+  });
+
+  it('drops the breakdown bar when no level was measured', () => {
+    const data = { ...STRESS_DATA, stressBreakdown: null };
+    const html = renderToStaticMarkup(<StressView {...props('large')} data={data} />);
+    expect(html).toContain('34');
+    expect(html).not.toContain('Rest');
+  });
+
+  it('renders the empty state when the watch reported nothing', () => {
+    const data = {
+      stress: null, maxStress: null, stressQualifier: null,
+      stressBreakdown: null, stressCurve: [],
+    } as Partial<ViewProps['data']> as ViewProps['data'];
+    const html = renderToStaticMarkup(<StressView {...props('medium')} data={data} />);
+    expect(html).toContain('No stress data yet');
+  });
+});
+
+// ─── Race predictions ───────────────────────────────────────────────
+
+const PREDICTIONS: RacePredictions = { fiveK: 1421, tenK: 2988, half: 6603, marathon: 13911 };
+
+describe('RacePredictionsView', () => {
+  it.each(TIERS)('renders all four distances at %s tier', (tier) => {
+    cache.set('garmin:racePredictions', PREDICTIONS);
+    const html = renderToStaticMarkup(<RacePredictionsView {...props(tier)} />);
+    expect(html).toContain('23:41');       // 5K
+    expect(html).toContain('49:48');       // 10K
+    expect(html).toContain('1:50:03');     // half
+    expect(html).toContain('3:51:51');     // marathon
+    if (tier !== 'compact') expect(html).toContain('/mi'); // pace line (imperial props)
+    expect(html).not.toContain('--');
+  });
+
+  it('skips unpredicted distances instead of showing placeholders', () => {
+    cache.set('garmin:racePredictions', { ...PREDICTIONS, marathon: null });
+    const html = renderToStaticMarkup(<RacePredictionsView {...props('medium')} />);
+    expect(html).toContain('23:41');
+    expect(html).not.toContain('Marathon</div>'); // "Half marathon" still present
+    expect(html).not.toContain('--');
+  });
+
+  it('renders the empty state when nothing is predicted yet', () => {
+    cache.set('garmin:racePredictions', null);
+    const html = renderToStaticMarkup(<RacePredictionsView {...props('medium')} />);
+    expect(html).toContain('No race predictions yet');
+  });
+});
+
+// ─── Personal records ───────────────────────────────────────────────
+
+const RECORDS: PersonalRecord[] = [
+  { typeId: 1, value: 263.7, date: '2026-03-14' },
+  { typeId: 3, value: 1421.2, date: '2026-05-02' },
+  { typeId: 7, value: 21098, date: '2025-10-05' },
+  { typeId: 8, value: 64300, date: '2025-08-17' },
+  { typeId: 9, value: 3097, date: '2025-08-17' },
+  { typeId: 10, value: 286.08, date: '2025-09-01' },
+  { typeId: 17, value: 3703.3, date: '2025-07-02' },
+  { typeId: 12, value: 31240, date: '2024-06-08' },
+  { typeId: 15, value: 34, date: null },
+  { typeId: 16, value: 3, date: '2026-07-12' },   // current streak, not a swim
+  { typeId: 99, value: 1, date: null },   // unmapped id stays hidden
+];
+
+describe('RecordsView', () => {
+  it.each(TIERS)('renders grouped records at %s tier', (tier) => {
+    cache.set('garmin:records', RECORDS);
+    const html = renderToStaticMarkup(<RecordsView {...props(tier)} />);
+    expect(html).toContain('Running');
+    expect(html).toContain('4:24');         // 1K time
+    expect(html).toContain('23:41');        // 5K time
+    expect(html).toContain('13.1 mi');      // longest run, imperial props
+    if (tier === 'large') {
+      expect(html).toContain('Steps');
+      expect(html).toContain('31,240');
+      expect(html).toContain('34 days');
+      expect(html).toContain('Current goal streak');
+      expect(html).toContain('286 W');
+      expect(html).toContain('Most ascent in a ride');
+      expect(html).toContain('Longest swim');
+      expect(html).toContain('4,050 yd');            // 3703.3 m, imperial props
+    }
+    expect(html).not.toContain('--');
+  });
+
+  it('splits groups across two columns on a wide-short box', () => {
+    cache.set('garmin:records', RECORDS);
+    const html = renderToStaticMarkup(<RecordsView {...wideProps()} />);
+    expect(html).toContain('Running');
+    expect(html).toContain('Cycling');
+  });
+
+  it('hides records whose typeId is unmapped', () => {
+    cache.set('garmin:records', [{ typeId: 99, value: 5, date: null }]);
+    const html = renderToStaticMarkup(<RecordsView {...props('medium')} />);
+    expect(html).toContain('No records yet');
+  });
+
+  it('renders the empty state when there are no records', () => {
+    cache.set('garmin:records', null);
+    const html = renderToStaticMarkup(<RecordsView {...props('medium')} />);
+    expect(html).toContain('No records yet');
   });
 });

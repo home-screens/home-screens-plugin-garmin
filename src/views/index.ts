@@ -9,3 +9,6 @@ export { TrainingStatusView } from './training-status';
 export { HrvView } from './hrv';
 export { HeartRateView } from './heart-rate';
 export { WeightView } from './weight';
+export { StressView } from './stress';
+export { RacePredictionsView } from './race-predictions';
+export { RecordsView } from './records';

@@ -88,6 +88,18 @@ export function formatMinSec(seconds: number | null): string {
   return mmss(seconds);
 }
 
+/** Race/record time: seconds → "19:53" under an hour, "1:32:04" past it. */
+export function formatRaceTime(seconds: number | null): string {
+  if (!seconds || seconds <= 0) return '--';
+  const rounded = Math.round(seconds);
+  if (rounded < 3600) return mmss(rounded);
+  const h = Math.floor(rounded / 3600);
+  const rest = rounded % 3600;
+  const m = Math.floor(rest / 60);
+  const s = rest % 60;
+  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 const LB_PER_KG = 2.2046226;
 
 /** kg → "72.4 kg" or "159.6 lb", one decimal (both units read fine on a wall). */
@@ -133,4 +145,14 @@ export function formatShortDate(isoDate: string | null): string | null {
   const d = new Date(`${isoDate}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return null;
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(d);
+}
+
+/** "2026-06-15" → "Jun 15, 2026" — for records that can be years old. */
+export function formatShortDateYear(isoDate: string | null): string | null {
+  if (!isoDate) return null;
+  const d = new Date(`${isoDate}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
+  }).format(d);
 }

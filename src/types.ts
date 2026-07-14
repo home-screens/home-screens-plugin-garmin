@@ -51,12 +51,23 @@ export interface Traces {
   elevation: TracePoint[];
 }
 
+/** Seconds spent at each stress level today (usersummary daily). */
+export interface StressBreakdown {
+  rest: number;
+  low: number;
+  medium: number;
+  high: number;
+}
+
 export interface GarminData {
   steps: number | null;
   stepGoal: number | null;
   calories: number | null;
   restingHr: number | null;
   stress: number | null;
+  maxStress: number | null;
+  stressQualifier: string | null;           // BALANCED | STRESSFUL | CALM | ...
+  stressBreakdown: StressBreakdown | null;  // null when no level reported any time
   bodyBattery: number | null;
   bodyBatteryHigh: number | null;
   bodyBatteryLow: number | null;
@@ -82,6 +93,11 @@ export interface GarminData {
   restlessMoments: number | null;
   sleepBodyBatteryChange: number | null;
   stressCurve: { t: number; v: number }[];
+  // v3 sleep extras (same dailySleepData response; absent on older watches)
+  sleepSpo2: number | null;             // avg overnight SpO2, %
+  sleepRespiration: number | null;      // avg overnight respiration, brpm
+  sleepNeedMinutes: number | null;      // Garmin's computed need for last night
+  skinTempDeviationC: number | null;    // overnight deviation from baseline, °C
 }
 
 export type SportKey =
@@ -185,11 +201,29 @@ export interface WeightInfo {
   trend: { date: string; kg: number }[]; // one point per weigh-in day, oldest → newest
 }
 
+/** Predicted race times in seconds from metrics-service racepredictions.
+ *  Normalizer returns null when all four are absent (no run history). */
+export interface RacePredictions {
+  fiveK: number | null;
+  tenK: number | null;
+  half: number | null;
+  marathon: number | null;
+}
+
+/** One current personal record from personalrecord-service. The typeId →
+ *  label/format mapping lives in the records view; unmapped ids are hidden. */
+export interface PersonalRecord {
+  typeId: number;
+  value: number;             // seconds, meters, or a count depending on type
+  date: string | null;       // "YYYY-MM-DD" when the record was set
+}
+
 export type SizeTier = 'compact' | 'medium' | 'large';
 
 export type GarminView =
   | 'summary' | 'bodyBattery' | 'sleep' | 'activities' | 'latestActivity' | 'weekly'
-  | 'trainingReadiness' | 'trainingStatus' | 'hrv' | 'heartRate' | 'weight';
+  | 'trainingReadiness' | 'trainingStatus' | 'hrv' | 'heartRate' | 'weight'
+  | 'stress' | 'racePredictions' | 'records';
 export type Units = 'metric' | 'imperial';
 
 /** Weekly view's bottom section: per-sport totals or one row per workout. */

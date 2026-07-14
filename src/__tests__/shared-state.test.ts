@@ -11,6 +11,9 @@ const base: GarminData = {
   intensityMinutes: 70, intensityMinutesGoal: 150, activeCalories: 640,
   floorsAscended: 12, distanceMeters: 6400, hrv: 48, restlessMoments: 21,
   sleepBodyBatteryChange: 44, stressCurve: [],
+  maxStress: 88, stressQualifier: 'BALANCED',
+  stressBreakdown: { rest: 28800, low: 14400, medium: 3600, high: 900 },
+  sleepSpo2: 94.6, sleepRespiration: 14.2, sleepNeedMinutes: 480, skinTempDeviationC: -0.4,
 };
 
 describe('stateValues', () => {

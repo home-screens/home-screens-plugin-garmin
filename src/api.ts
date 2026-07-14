@@ -1,4 +1,4 @@
-import type { GarminData, GarminActivity } from './types';
+import type { GarminData, GarminActivity, StressBreakdown } from './types';
 
 const PLUGIN_ID = 'garmin';
 export const BASE = 'https://connectapi.garmin.com';
@@ -120,6 +120,13 @@ interface RawSummary {
   totalKilocalories?: number;
   restingHeartRate?: number;
   averageStressLevel?: number;
+  maxStressLevel?: number;
+  stressQualifier?: string;
+  // Seconds per stress level; -1 durations mean "not measured".
+  restStressDuration?: number;
+  lowStressDuration?: number;
+  mediumStressDuration?: number;
+  highStressDuration?: number;
   bodyBatteryMostRecentValue?: number;
   bodyBatteryHighestValue?: number;
   bodyBatteryLowestValue?: number;
@@ -140,10 +147,15 @@ interface RawSleep {
     sleepStartTimestampLocal?: number;
     sleepEndTimestampLocal?: number;
     sleepScores?: { overall?: { value?: number } };
+    averageSpO2Value?: number;
+    averageRespirationValue?: number;
+    sleepNeed?: { actual?: number };  // minutes
   };
+  wellnessSpO2SleepSummaryDTO?: { averageSPO2?: number; averageSpO2?: number };
   avgOvernightHrv?: number;
   restlessMomentsCount?: number;
   bodyBatteryChange?: number;
+  avgSkinTempDeviationC?: number;
 }
 interface RawBattery {
   charged?: number;
@@ -208,6 +220,9 @@ export function normalize(
     calories: summary?.totalKilocalories ?? null,
     restingHr: summary?.restingHeartRate ?? null,
     stress: summary?.averageStressLevel ?? null,
+    maxStress: summary?.maxStressLevel ?? null,
+    stressQualifier: summary?.stressQualifier ?? null,
+    stressBreakdown: stressBreakdown(summary),
     bodyBattery: summary?.bodyBatteryMostRecentValue ?? null,
     bodyBatteryHigh: summary?.bodyBatteryHighestValue ?? null,
     bodyBatteryLow: summary?.bodyBatteryLowestValue ?? null,
@@ -237,5 +252,25 @@ export function normalize(
     stressCurve: (stress?.stressValuesArray ?? [])
       .filter(([, v]) => v >= 0)
       .map(([t, v]) => ({ t, v })),
+    sleepSpo2: dto?.averageSpO2Value
+      ?? sleep?.wellnessSpO2SleepSummaryDTO?.averageSPO2
+      ?? sleep?.wellnessSpO2SleepSummaryDTO?.averageSpO2 ?? null,
+    sleepRespiration: dto?.averageRespirationValue ?? null,
+    sleepNeedMinutes: dto?.sleepNeed?.actual ?? null,
+    skinTempDeviationC: sleep?.avgSkinTempDeviationC ?? null,
   };
+}
+
+/** Time-in-level durations; -1 marks unmeasured. Null when the watch reported
+ *  no level at all today, so the view drops the bar instead of drawing 0s. */
+function stressBreakdown(summary: RawSummary | null): StressBreakdown | null {
+  const secs = (v: number | undefined) => (v != null && v > 0 ? v : 0);
+  const breakdown = {
+    rest: secs(summary?.restStressDuration),
+    low: secs(summary?.lowStressDuration),
+    medium: secs(summary?.mediumStressDuration),
+    high: secs(summary?.highStressDuration),
+  };
+  const total = breakdown.rest + breakdown.low + breakdown.medium + breakdown.high;
+  return total > 0 ? breakdown : null;
 }
