@@ -2,7 +2,7 @@
 
 Shows your Garmin Connect health data on a Home Screens display: daily steps, Body Battery, sleep, and recent activities.
 
-Requires Home Screens 1.8.0 or newer (the release that added host-managed sign-in for plugins). You sign in with your Garmin account once in the editor; the display never sees your password.
+Requires Home Screens 1.7.1 or newer (the release that added host-managed sign-in for plugins). You sign in with your Garmin account once in the editor; the display never sees your password.
 
 ## Views
 
