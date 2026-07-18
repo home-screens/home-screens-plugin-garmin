@@ -2,7 +2,7 @@
 
 Shows your Garmin Connect health data on a Home Screens display: daily steps, Body Battery, sleep, and recent activities.
 
-Requires Home Screens 1.7.1 or newer (the release that added host-managed sign-in for plugins). You sign in with your Garmin account once in the editor; the display never sees your password.
+Requires Home Screens 1.8.0 or newer (the release that added demand-driven plugin state providers). You sign in with your Garmin account once in the editor; the display never sees your password.
 
 ## Views
 
@@ -27,7 +27,7 @@ Views adapt to the module's size — a small card shows the essentials; a large 
 
 ## Shared state
 
-The plugin publishes `plugin:garmin:body_battery`, `plugin:garmin:sleep_score`, and `plugin:garmin:steps`, so other modules can show or hide themselves based on your health data (for example, a wind-down reminder when Body Battery runs low).
+The plugin publishes `plugin:garmin:body_battery`, `plugin:garmin:sleep_score`, and `plugin:garmin:steps`, so other modules can show or hide themselves based on your health data (for example, a wind-down reminder when Body Battery runs low). A key starts publishing as soon as any condition or rule references it — you don't need to add a Garmin module to the screen, and it keeps publishing even while your Garmin module is rotated off-screen.
 
 ## Development
 

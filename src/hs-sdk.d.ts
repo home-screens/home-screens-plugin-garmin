@@ -12,6 +12,13 @@ import type { FC, ReactNode } from 'react';
 
 // ─── Supporting Types ────────────────────────────────────────────────────────
 
+/** Health status a `stateProvider` reports for the editor's shared-state
+ *  inspector. `since` is epoch ms when the outage began (stable across
+ *  repeated failure reports, not the time of the current report). */
+export type ProviderHealthStatus =
+  | { ok: true }
+  | { ok: false; message: string; since: number };
+
 /** Host settings snapshot — read-only */
 interface HostSettings {
   timezone: string;
@@ -163,6 +170,11 @@ declare global {
        *  unknown again. Same namespace rules as publishState. Ships one host
        *  release after publishState — guard every call. */
       clearState?: (pluginId: string, key: string) => void;
+      /** Report this plugin's `stateProvider` health for the editor's
+       *  shared-state inspector. `{ok:true}` clears any reported outage.
+       *  Absent on hosts older than provider-health reporting — guard every
+       *  call. */
+      reportProviderHealth?: (pluginId: string, status: ProviderHealthStatus) => void;
 
       // ── Editor-Only (may be undefined on display page) ──
       /** Accordion section wrapper for grouping config fields */

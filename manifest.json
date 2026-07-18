@@ -5,7 +5,7 @@
   "description": "Your Garmin Connect health data: steps, Body Battery, sleep, activities, and weekly training.",
   "author": "home-screens",
   "license": "MIT",
-  "minAppVersion": "1.7.1",
+  "minAppVersion": "1.8.0",
   "moduleType": "garmin",
   "category": "Health & Fitness",
   "icon": "Activity",
@@ -107,7 +107,8 @@
 
   "exports": {
     "component": "default",
-    "configSection": "ConfigSection"
+    "configSection": "ConfigSection",
+    "stateProvider": "StateProvider"
   },
 
   "dataRequirements": [],

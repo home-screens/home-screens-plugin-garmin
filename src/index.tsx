@@ -2,7 +2,7 @@ import React from 'react';
 import type { PluginComponentProps } from './hs-plugin';
 import type { GarminView, SportFilter, Units, ViewProps, WeeklyStyle, WeeklyWindow } from './types';
 import { useGarminData, useConnection, useModuleSize } from './hooks';
-import { PLUGIN_ID, stateValues, deriveProvidedKeys } from './shared-state';
+import { deriveProvidedKeys } from './shared-state';
 import { EmptyState } from './components';
 import {
   SummaryView, BodyBatteryView, SleepView, ActivityListView, ActivityHeroView, WeeklyView,
@@ -42,13 +42,6 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
   const connected = useConnection();
   const load = useGarminData(connected === true, tz, fetchCount, refreshMs);
   const { ref, tier, width, height } = useModuleSize();
-
-  // Publish shared-state keys whenever fresh data lands.
-  React.useEffect(() => {
-    const publish = window.__HS_SDK__?.publishState;
-    if (!publish || load.status !== 'ready') return;
-    for (const [k, v] of Object.entries(stateValues(load.data))) publish(PLUGIN_ID, k, v);
-  }, [load]);
 
   const root: React.CSSProperties = {
     width: '100%', height: '100%', overflow: 'hidden', boxSizing: 'border-box',
