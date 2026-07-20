@@ -1,7 +1,7 @@
 {
   "id": "garmin",
   "name": "Garmin",
-  "version": "1.4.0-beta.1",
+  "version": "1.4.0-beta.2",
   "description": "Your Garmin Connect health data: steps, Body Battery, sleep, activities, and weekly training.",
   "author": "home-screens",
   "license": "MIT",

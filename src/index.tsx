@@ -102,3 +102,8 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
 // The host editor reads this named export to populate the visibility-condition key picker.
 export { deriveProvidedKeys };
 export { default as ConfigSection } from './ConfigSection';
+// Re-exported so Vite's lib-mode bundle (entry: src/index.tsx) actually
+// includes it — manifest.json's exports.stateProvider names this export,
+// but nothing reaches it from the entry point otherwise, so it gets
+// tree-shaken out even though it's mounted, tested, and correct.
+export { StateProvider } from './StateProvider';
