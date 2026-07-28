@@ -5,6 +5,7 @@ import { EmptyState } from '../components';
 import { usePersonalRecords } from '../hooks';
 import { isWide } from '../size';
 import { formatCount, formatDistance, formatElevation, formatRaceTime, formatShortDateYear } from '../format';
+import { useScale } from '../scale';
 
 type RecordKind = 'time' | 'distance' | 'swimDistance' | 'ascent' | 'power' | 'count' | 'days';
 
@@ -68,6 +69,7 @@ interface Row {
  *  show the headline runs instead of clipping. Wide-short boxes split the
  *  groups across two columns. */
 export function RecordsView({ timezone, units, width, height, refreshMs }: ViewProps) {
+  const u = useScale();
   const load = usePersonalRecords(timezone, refreshMs);
 
   if (load.status === 'authExpired') {
@@ -104,9 +106,9 @@ export function RecordsView({ timezone, units, width, height, refreshMs }: ViewP
   const showDate = width >= 460;
   // Height budget: each row ~38, each group header ~30. Fill greedily in
   // group order and summarize the remainder.
-  const ROW_H = 38, HEADER_H = 30, MORE_H = 24;
+  const ROW_H = u(38), HEADER_H = u(30), MORE_H = u(24);
   const columns = wide ? 2 : 1;
-  const budget = (height - 8) * columns;
+  const budget = (height - u(8)) * columns;
   const groups = GROUP_ORDER
     .map((name) => ({ name, rows: rows.filter((r) => r.def.group === name) }))
     .filter((g) => g.rows.length > 0);
@@ -129,30 +131,30 @@ export function RecordsView({ timezone, units, width, height, refreshMs }: ViewP
   // airy poster instead of a compressed table with a dead band below.
   const visibleRowCount = visible.reduce((s, g) => s + g.rows.length, 0);
   const spare = Math.max(0, budget - used - (hidden > 0 ? MORE_H : 0));
-  const rowPadY = 7 + Math.min(16, Math.round(spare / Math.max(1, visibleRowCount * 2)));
+  const rowPadY = u(7) + Math.min(u(16), Math.round(spare / Math.max(1, visibleRowCount * 2)));
 
   const groupBlock = (g: { name: string; rows: Row[] }) => (
     <div key={g.name} style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{
-        fontSize: 12, opacity: 0.55, textTransform: 'uppercase', letterSpacing: 0.5,
+        fontSize: u(12), opacity: 0.55, textTransform: 'uppercase', letterSpacing: u(0.5),
         padding: '8px 0 4px',
       }}>
         {g.name}
       </div>
       {g.rows.map(({ def, record }) => (
         <div key={record.typeId} style={{
-          display: 'flex', alignItems: 'baseline', gap: 12, padding: `${rowPadY}px 0`,
-          borderTop: `1px solid ${PALETTE.rail}`, fontSize: 15,
+          display: 'flex', alignItems: 'baseline', gap: u(12), padding: `${rowPadY}px 0`,
+          borderTop: `1px solid ${PALETTE.rail}`, fontSize: u(15),
         }}>
           <span style={{ opacity: 0.8 }}>{def.label}</span>
           <span style={{
-            marginLeft: 'auto', fontWeight: 700, fontSize: 17,
+            marginLeft: 'auto', fontWeight: 700, fontSize: u(17),
             fontVariantNumeric: 'tabular-nums',
           }}>
             {formatRecord(record.value, def.kind, units)}
           </span>
           {showDate && (
-            <span style={{ opacity: 0.5, fontSize: 13, width: 88, textAlign: 'right' }}>
+            <span style={{ opacity: 0.5, fontSize: u(13), width: u(88), textAlign: 'right' }}>
               {formatShortDateYear(record.date) ?? ''}
             </span>
           )}
@@ -162,15 +164,15 @@ export function RecordsView({ timezone, units, width, height, refreshMs }: ViewP
   );
 
   const more = hidden > 0 && (
-    <div style={{ opacity: 0.5, fontSize: 12, paddingTop: 6 }}>+{hidden} more</div>
+    <div style={{ opacity: 0.5, fontSize: u(12), paddingTop: u(6) }}>+{hidden} more</div>
   );
 
   if (wide) {
     const half = Math.ceil(visible.length / 2);
     return (
-      <div style={{ display: 'flex', height: '100%', gap: 56, justifyContent: 'center' }}>
-        <div style={{ flex: 1, maxWidth: 480 }}>{visible.slice(0, half).map(groupBlock)}</div>
-        <div style={{ flex: 1, maxWidth: 480 }}>
+      <div style={{ display: 'flex', height: '100%', gap: u(56), justifyContent: 'center' }}>
+        <div style={{ flex: 1, maxWidth: u(480) }}>{visible.slice(0, half).map(groupBlock)}</div>
+        <div style={{ flex: 1, maxWidth: u(480) }}>
           {visible.slice(half).map(groupBlock)}
           {more}
         </div>

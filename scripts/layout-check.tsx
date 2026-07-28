@@ -10,6 +10,7 @@ import { join } from 'node:path';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { chromium } from 'playwright';
+import { ScaleProvider } from '../src/scale';
 
 // ─── Fixtures (shapes match captured Garmin responses) ─────────────
 const READINESS = {
@@ -243,10 +244,52 @@ const html = `<!doctype html><meta charset="utf-8"><style>
             box-sizing: border-box; overflow: hidden; color: #f1f5f9; font-size: 16px; flex-shrink: 0; }
 </style>${boxes}`;
 
+// ─── Text-size sweep ────────────────────────────────────────────────
+// The matrix above holds the Text size at the authored default and varies the
+// box. This pass does the opposite: it holds the box still and drags the
+// host's Text size slider, which is what the host actually does — moving the
+// slider never resizes the module.
+//
+// That is the case where a height budget mixing scaled constants with
+// unscaled ones goes wrong, and it is invisible to any check that grows the
+// box alongside the type. Boxes are the small end of the matrix, where there
+// is no slack to hide a mis-budgeted row.
+const SWEEP_FONTS = [8, 24, 32, 48];
+const SWEEP_SIZES = SIZES.filter(([n]) =>
+  n === 'small-420x420' || n === 'narrow-360x520' || n === 'default-520x640' || n === 'wide-short');
+
+let sweepBoxes = '';
+for (const [viewName, View] of VIEWS) {
+  for (const [sizeName, w, h] of SWEEP_SIZES) {
+    for (const fontSize of SWEEP_FONTS) {
+      const cw = w - 40, ch = h - 40;
+      const props = {
+        data: DATA, units: 'imperial', timezone: 'America/Chicago', activityCount: 20,
+        tier: tierFor(cw, ch), width: cw, height: ch,
+        sportFilter: 'all', weeklyStyle: 'bySport', weeklyWindow: 'calendar', refreshMs: 900_000,
+      };
+      sweepBoxes += `
+        <div class="module" data-view="${viewName}" data-size="${sizeName}@${fontSize}"
+             style="width:${w}px;height:${h}px;font-size:${fontSize}px">
+          ${renderToStaticMarkup(
+            React.createElement(ScaleProvider, { fontSize }, React.createElement(View, props)),
+          )}
+        </div>`;
+    }
+  }
+}
+
 const outDir = join(import.meta.dirname, '.shots');
 mkdirSync(outDir, { recursive: true });
 const harnessPath = join(outDir, 'harness.html');
 writeFileSync(harnessPath, html);
+const sweepPath = join(outDir, 'harness-textsize.html');
+writeFileSync(sweepPath, `<!doctype html><meta charset="utf-8"><style>
+  body { background: #0d1220; margin: 0; padding: 24px; display: flex; flex-direction: column; gap: 24px;
+         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+  .module { background: rgba(8,10,18,0.92); border-radius: 14px; padding: 20px;
+            box-sizing: border-box; overflow: hidden; color: #f1f5f9; flex-shrink: 0; }
+</style>${sweepBoxes}`);
 
 // ─── Measure ────────────────────────────────────────────────────────
 interface Metric {
@@ -257,7 +300,7 @@ const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1500, height: 1100 } });
 await page.goto(`file://${harnessPath}`);
 
-const metrics: Metric[] = await page.$$eval('.module', (els) =>
+const measure = (p: typeof page): Promise<Metric[]> => p.$$eval('.module', (els) =>
   els.map((m) => {
     const inner = m.firstElementChild as HTMLElement | null;
     const kids = inner ? Array.from(inner.children) : [];
@@ -286,12 +329,17 @@ const metrics: Metric[] = await page.$$eval('.module', (els) =>
   }),
 );
 
+const metrics: Metric[] = await measure(page);
+
 for (const [viewName] of VIEWS) {
   for (const [sizeName] of SIZES) {
     const el = page.locator(`[data-view="${viewName}"][data-size="${sizeName}"]`);
     await el.screenshot({ path: join(outDir, `${viewName}--${sizeName}.png`) });
   }
 }
+
+await page.goto(`file://${sweepPath}`);
+const sweepMetrics: Metric[] = await measure(page);
 await browser.close();
 
 // ─── Report ─────────────────────────────────────────────────────────
@@ -309,4 +357,31 @@ for (const m of metrics) {
   );
 }
 console.log(failures ? `\n${failures} failing box(es)` : '\nall boxes within budget');
-process.exit(failures ? 1 : 0);
+
+// Only overflow matters in the sweep — dead space at Text size 8 is the
+// correct outcome, not a regression.
+//
+// A ratchet, not a gate. Several views still overflow at the top of the Text
+// size range on the smallest boxes, from causes this pass did not set out to
+// fix: content-shedding thresholds (`height >= 340` and friends in
+// heart-rate, hrv, weight, race-predictions, sleep, activity-hero) are still
+// compared against unscaled constants, so those views admit a chart or a tile
+// row onto a box that the scaled type has already filled. Demanding zero here
+// would fail the build on known, unrelated work; allowing any number would
+// let the next mixed-unit budget slip in unnoticed. So: hold the line and
+// lower it as those gates get scaled.
+const SWEEP_OVERFLOW_ALLOWED = 45;
+const sweepFails = sweepMetrics.filter((m) => m.overflowV > 2 || m.overflowH > 2);
+console.log(`\n─ Text size sweep (${SWEEP_FONTS.join('/')} on ${SWEEP_SIZES.length} boxes) ─`);
+for (const m of sweepFails) {
+  console.log(`${m.view.padEnd(20)}${m.size.padEnd(21)}ovV ${String(m.overflowV).padEnd(5)}ovH ${m.overflowH}`);
+}
+const regressed = sweepFails.length > SWEEP_OVERFLOW_ALLOWED;
+console.log(`${sweepFails.length} of ${sweepMetrics.length} boxes overflow`
+  + ` (allowed ${SWEEP_OVERFLOW_ALLOWED})`
+  + (regressed ? ' — REGRESSION' : ''));
+if (sweepFails.length < SWEEP_OVERFLOW_ALLOWED) {
+  console.log(`lower SWEEP_OVERFLOW_ALLOWED to ${sweepFails.length}`);
+}
+
+process.exit(failures || regressed ? 1 : 0);

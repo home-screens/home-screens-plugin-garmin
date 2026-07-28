@@ -5,6 +5,7 @@ import { EmptyState } from '../components';
 import { useRacePredictions } from '../hooks';
 import { isWide } from '../size';
 import { formatPace, formatRaceTime } from '../format';
+import { useScale } from '../scale';
 
 const DISTANCES: [keyof RacePredictions, string, number][] = [
   ['fiveK', '5K', 5_000],
@@ -18,6 +19,7 @@ const DISTANCES: [keyof RacePredictions, string, number][] = [
  *  watch predicts all four together, but any distance can be null early on
  *  and absent distances are skipped rather than shown as "--". */
 export function RacePredictionsView({ timezone, units, width, height, refreshMs }: ViewProps) {
+  const u = useScale();
   const load = useRacePredictions(timezone, refreshMs);
 
   if (load.status === 'authExpired') {
@@ -50,30 +52,32 @@ export function RacePredictionsView({ timezone, units, width, height, refreshMs 
   // big-type column on portrait boxes; rows distribute over the full height.
   const columns = wide ? rows.length : width >= height ? Math.min(2, rows.length) : 1;
   const rowCount = Math.ceil(rows.length / columns);
-  const showPace = height >= 340 || wide;
+  const showPace = height >= u(340) || wide;
   // Longest time string ("1:50:03" ≈ 4.4 characters of width at tabular
   // sizing) bounds the font so columns never collide; the per-row height
   // budget (label ~17 + pace ~22 + breathing room) bounds it vertically.
   const colWidth = (wide ? width * 0.9 : width) / columns;
-  const perRow = (height - 16) / rowCount;
-  const timeFont = Math.round(Math.max(30, Math.min(
-    colWidth / 4.4,
-    perRow - 45 - (showPace ? 22 : 0),
-    72,
-  )));
+  const perRow = (height - u(16)) / rowCount;
+  // Both bounds are physical — the column can't widen and the row can't grow —
+  // so they are applied last. A scaled minimum placed outside them (u(30) is
+  // 135px at Text size 72) just overflows the module. The 12px floor is a
+  // legibility guard, not a scaled dimension: below it the clock is unreadable
+  // anyway, and it is small enough never to be the thing that overflows.
+  const room = Math.min(colWidth / 4.4, perRow - u(45) - (showPace ? u(22) : 0));
+  const timeFont = Math.round(Math.max(12, Math.min(u(72), room)));
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <div style={{
         display: 'grid', gridTemplateColumns: `repeat(${columns}, 1fr)`,
-        flex: 1, alignContent: 'space-evenly', columnGap: 40, rowGap: 12,
+        flex: 1, alignContent: 'space-evenly', columnGap: u(40), rowGap: u(12),
         width: '100%',
       }}>
         {rows.map(([key, label, meters]) => {
           const seconds = p![key] as number;
           return (
-            <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-              <div style={{ fontSize: 13, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u(4) }}>
+              <div style={{ fontSize: u(13), opacity: 0.6, textTransform: 'uppercase', letterSpacing: u(0.5) }}>
                 {label}
               </div>
               <div style={{
@@ -92,8 +96,9 @@ export function RacePredictionsView({ timezone, units, width, height, refreshMs 
 }
 
 function PaceLine({ seconds, meters, units }: { seconds: number; meters: number; units: Units }) {
+  const u = useScale();
   return (
-    <div style={{ fontSize: 14, opacity: 0.65 }}>
+    <div style={{ fontSize: u(14), opacity: 0.65 }}>
       {formatPace(meters / seconds, units)}
     </div>
   );

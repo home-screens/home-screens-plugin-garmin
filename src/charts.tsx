@@ -4,12 +4,14 @@ import { PALETTE } from './theme';
 import { formatDuration, formatDistance, formatPace, formatMinSec } from './format';
 import { sportFor, type Sport } from './sports';
 import { Sparkline } from './components';
+import { useScale } from './scale';
 
 // ─── TraceChart ─────────────────────────────────────────────────────
 /** The hero's chart: elevation as a rail-toned filled area, HR as a line,
  *  sharing the x-axis. Each series is normalized to its own min/max. Renders
  *  whichever traces exist; null-traces callers should skip rendering. */
 export function TraceChart({ traces, width, height }: { traces: Traces; width: number; height: number }) {
+  const u = useScale();
   const hasHr = traces.hr.length >= 2;
   const hasElev = traces.elevation.length >= 2;
   if (!hasHr && !hasElev) return null;
@@ -43,7 +45,7 @@ export function TraceChart({ traces, width, height }: { traces: Traces; width: n
       {hasHr && (
         <path
           d={path(traces.hr, scaleY(traces.hr, 6))}
-          fill="none" stroke={PALETTE.heart} strokeWidth={2} strokeLinejoin="round"
+          fill="none" stroke={PALETTE.heart} strokeWidth={u(2)} strokeLinejoin="round"
         />
       )}
     </svg>
@@ -55,19 +57,20 @@ const ZONE_COLORS = [PALETTE.z1, PALETTE.z2, PALETTE.z3, PALETTE.z4, PALETTE.z5]
 
 /** Five horizontal HR-zone bars, widths proportional to seconds-in-zone. */
 export function ZoneBars({ zones }: { zones: Zone[] }) {
+  const u = useScale();
   const max = Math.max(...zones.map((z) => z.secsInZone), 1);
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: u(5) }}>
       {zones.map((z) => (
-        <div key={z.zoneNumber} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-          <span style={{ width: 20, opacity: 0.6 }}>Z{z.zoneNumber}</span>
-          <div style={{ flex: 1, height: 10, borderRadius: 5, background: PALETTE.rail }}>
+        <div key={z.zoneNumber} style={{ display: 'flex', alignItems: 'center', gap: u(8), fontSize: u(12) }}>
+          <span style={{ width: u(20), opacity: 0.6 }}>Z{z.zoneNumber}</span>
+          <div style={{ flex: 1, height: u(10), borderRadius: u(5), background: PALETTE.rail }}>
             <div style={{
-              width: `${(z.secsInZone / max) * 100}%`, height: '100%', borderRadius: 5,
+              width: `${(z.secsInZone / max) * 100}%`, height: '100%', borderRadius: u(5),
               background: ZONE_COLORS[z.zoneNumber - 1],
             }} />
           </div>
-          <span style={{ width: 56, textAlign: 'right', fontVariantNumeric: 'tabular-nums', opacity: 0.75 }}>
+          <span style={{ width: u(56), textAlign: 'right', fontVariantNumeric: 'tabular-nums', opacity: 0.75 }}>
             {formatMinSec(z.secsInZone)}
           </span>
         </div>
@@ -82,14 +85,15 @@ export function SplitsTable({ splits, units, maxRows }: {
   splits: { index: number; distanceMeters: number; durationSeconds: number; avgHr: number | null }[];
   units: Units; maxRows: number;
 }) {
+  const u = useScale();
   const shown = splits.slice(0, maxRows);
   const hidden = splits.length - shown.length;
-  const cols = '32px 1fr 1fr 1fr 48px';
+  const cols = `${u(32)}px 1fr 1fr 1fr ${u(48)}px`;
   return (
-    <div style={{ fontSize: 13 }}>
+    <div style={{ fontSize: u(13) }}>
       <div style={{
-        display: 'grid', gridTemplateColumns: cols, gap: 4, paddingBottom: 4,
-        opacity: 0.55, fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.5,
+        display: 'grid', gridTemplateColumns: cols, gap: u(4), paddingBottom: u(4),
+        opacity: 0.55, fontSize: u(11), textTransform: 'uppercase', letterSpacing: u(0.5),
       }}>
         <span>#</span><span>Dist</span><span>Time</span><span>Pace</span>
         <span style={{ textAlign: 'right' }}>HR</span>
@@ -99,7 +103,7 @@ export function SplitsTable({ splits, units, maxRows }: {
           ? s.distanceMeters / s.durationSeconds : null;
         return (
           <div key={s.index} style={{
-            display: 'grid', gridTemplateColumns: cols, gap: 4, padding: '3px 0',
+            display: 'grid', gridTemplateColumns: cols, gap: u(4), padding: `${u(3)}px 0`,
             fontVariantNumeric: 'tabular-nums', borderTop: `1px solid ${PALETTE.rail}`,
           }}>
             <span style={{ opacity: 0.6 }}>{s.index}</span>
@@ -110,7 +114,7 @@ export function SplitsTable({ splits, units, maxRows }: {
           </div>
         );
       })}
-      {hidden > 0 && <div style={{ opacity: 0.5, fontSize: 12, paddingTop: 4 }}>+{hidden} more</div>}
+      {hidden > 0 && <div style={{ opacity: 0.5, fontSize: u(12), paddingTop: u(4) }}>+{hidden} more</div>}
     </div>
   );
 }
@@ -118,14 +122,15 @@ export function SplitsTable({ splits, units, maxRows }: {
 // ─── DayBars ────────────────────────────────────────────────────────
 /** 7 vertical bars stacked by sport color; today gets full opacity + bold label. */
 export function DayBars({ days, height }: { days: WeeklyDay[]; height: number }) {
+  const u = useScale();
   const max = Math.max(...days.map((d) => d.totalSeconds), 1);
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: u(8) }}>
       {days.map((d) => (
-        <div key={d.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+        <div key={d.key} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u(4) }}>
           <div style={{
             width: '100%', height, display: 'flex', flexDirection: 'column',
-            justifyContent: 'flex-end', borderRadius: 6, overflow: 'hidden',
+            justifyContent: 'flex-end', borderRadius: u(6), overflow: 'hidden',
             background: PALETTE.rail, opacity: d.isToday ? 1 : 0.75,
           }}>
             {(Object.entries(d.bySport) as [SportKey, number][]).map(([sport, secs]) => (
@@ -133,7 +138,7 @@ export function DayBars({ days, height }: { days: WeeklyDay[]; height: number })
             ))}
           </div>
           <span style={{
-            fontSize: 11, opacity: d.isToday ? 0.9 : 0.5, fontWeight: d.isToday ? 700 : 400,
+            fontSize: u(11), opacity: d.isToday ? 0.9 : 0.5, fontWeight: d.isToday ? 700 : 400,
           }}>{d.label}</span>
         </div>
       ))}
@@ -150,7 +155,8 @@ export function BandLineChart({ points, width, height, color, band }: {
   width: number; height: number; color: string;
   band?: { low: number; high: number };
 }) {
-  if (points.length < 2) return <div style={{ height, opacity: 0.4, fontSize: 12 }}>No trend yet</div>;
+  const u = useScale();
+  if (points.length < 2) return <div style={{ height, opacity: 0.4, fontSize: u(12) }}>No trend yet</div>;
   const vs = points.map((p) => p.v);
   const lo = Math.min(...vs, band?.low ?? Infinity);
   const hi = Math.max(...vs, band?.high ?? -Infinity);
@@ -171,7 +177,7 @@ export function BandLineChart({ points, width, height, color, band }: {
           fill={PALETTE.bodyBattery} opacity={0.14}
         />
       )}
-      <path d={line} fill="none" stroke={color} strokeWidth={2.5} strokeLinejoin="round" />
+      <path d={line} fill="none" stroke={color} strokeWidth={u(2.5)} strokeLinejoin="round" />
     </svg>
   );
 }
@@ -196,18 +202,21 @@ const GLYPHS: Partial<Record<SportKey, React.ReactNode>> = {
 
 /** Colored rounded square with the sport's glyph. Accepts a Sport so callers
  *  with only a SportKey (weekly totals) can use sportByKey. */
-export function SportBadge({ sport, size = 44 }: { sport: Sport; size?: number }) {
+export function SportBadge({ sport, size }: { sport: Sport; size?: number }) {
+  const u = useScale();
+  // Callers passing an explicit size have already scaled it.
+  const box = size ?? u(44);
   const glyph = GLYPHS[sport.key];
   return (
     <span style={{
-      width: size, height: size, borderRadius: size * 0.27, flexShrink: 0,
+      width: box, height: box, borderRadius: box * 0.27, flexShrink: 0,
       background: `${sport.color}26`, color: sport.color,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: size * 0.26, fontWeight: 700,
+      fontSize: box * 0.26, fontWeight: 700,
     }}>
       {glyph ? (
         <svg
-          width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24"
+          width={box * 0.55} height={box * 0.55} viewBox="0 0 24 24"
           fill="none" stroke="currentColor" strokeWidth={2}
           strokeLinecap="round" strokeLinejoin="round"
         >
@@ -232,6 +241,7 @@ export function BatteryStressChart({ battery, stress, width, height }: {
   stress: { t: number; v: number }[];
   width: number; height: number;
 }) {
+  const u = useScale();
   if (battery.length < 2 && stress.length < 2) {
     return <Sparkline points={battery} width={width} height={height} color={PALETTE.bodyBattery} />;
   }
@@ -246,7 +256,7 @@ export function BatteryStressChart({ battery, stress, width, height }: {
   const lo = battery.length ? battery.reduce((a, b) => (b.v < a.v ? b : a)) : null;
 
   const dot = (color: string): React.CSSProperties => ({
-    width: 8, height: 8, borderRadius: 2, background: color, display: 'inline-block', marginRight: 5,
+    width: u(8), height: u(8), borderRadius: u(2), background: color, display: 'inline-block', marginRight: u(5),
   });
   return (
     <div>
@@ -257,16 +267,16 @@ export function BatteryStressChart({ battery, stress, width, height }: {
               d={`${line(battery)} L ${sx(battery[battery.length - 1].t).toFixed(1)} ${height} L ${sx(battery[0].t).toFixed(1)} ${height} Z`}
               fill={PALETTE.bodyBattery} opacity={0.15}
             />
-            <path d={line(battery)} fill="none" stroke={PALETTE.bodyBattery} strokeWidth={2.5} strokeLinejoin="round" />
+            <path d={line(battery)} fill="none" stroke={PALETTE.bodyBattery} strokeWidth={u(2.5)} strokeLinejoin="round" />
           </>
         )}
         {stress.length >= 2 && (
-          <path d={line(stress)} fill="none" stroke={PALETTE.stress} strokeWidth={1.5} opacity={0.85} strokeLinejoin="round" />
+          <path d={line(stress)} fill="none" stroke={PALETTE.stress} strokeWidth={u(1.5)} opacity={0.85} strokeLinejoin="round" />
         )}
-        {hi && <circle cx={sx(hi.t)} cy={sy(hi.v)} r={3.5} fill={PALETTE.bodyBattery} />}
-        {lo && hi !== lo && <circle cx={sx(lo.t)} cy={sy(lo.v)} r={3.5} fill={PALETTE.stress} />}
+        {hi && <circle cx={sx(hi.t)} cy={sy(hi.v)} r={u(3.5)} fill={PALETTE.bodyBattery} />}
+        {lo && hi !== lo && <circle cx={sx(lo.t)} cy={sy(lo.v)} r={u(3.5)} fill={PALETTE.stress} />}
       </svg>
-      <div style={{ display: 'flex', gap: 16, fontSize: 11, opacity: 0.7, marginTop: 4 }}>
+      <div style={{ display: 'flex', gap: u(16), fontSize: u(11), opacity: 0.7, marginTop: u(4) }}>
         <span><span style={dot(PALETTE.bodyBattery)} />Body Battery{hi ? ` · high ${hi.v}` : ''}{lo ? ` · low ${lo.v}` : ''}</span>
         <span><span style={dot(PALETTE.stress)} />Stress</span>
       </div>

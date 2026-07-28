@@ -7,6 +7,7 @@ import { formatDistance, formatDuration } from '../format';
 import { matchesFilter, sportByKey, sportFor } from '../sports';
 import { useFirstDayOfWeek, useWeeklyActivities } from '../hooks';
 import { consistencyDays, relativeDay, todayIso, weekStartIso, weeklyRollup } from '../aggregate';
+import { useScale } from '../scale';
 
 /** Rolling last-7-days rollup from its own range fetch (the daily bundle only
  *  carries activityCount ≤ 10 rows). DayBars + week-total row always; the
@@ -15,6 +16,7 @@ import { consistencyDays, relativeDay, todayIso, weekStartIso, weeklyRollup } fr
  *  sports, so the list isn't sacrificed to space reserved for hypothetical
  *  ones. The bars absorb the leftover height. */
 export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWindow, refreshMs, width, height }: ViewProps) {
+  const u = useScale();
   const load = useWeeklyActivities(timezone, refreshMs);
   const firstDay = useFirstDayOfWeek();
 
@@ -67,8 +69,8 @@ export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWi
 
   // Height budget: bars label ~20, totals ~54, list rows ~53 each, gaps 18.
   // Rows get first claim (with minimum bars); the bars absorb the leftover.
-  const ROW_H = 53, MIN_BARS = 90;
-  const fixed = 20 + 54 + 18 * 2 + 12;
+  const ROW_H = u(53), MIN_BARS = u(90);
+  const fixed = u(20) + u(54) + u(18) * 2 + u(12);
   const maxRows = Math.max(0, Math.floor((height - MIN_BARS - fixed) / ROW_H));
   const allRows = weeklyStyle === 'individual'
     ? weekActs.length
@@ -78,8 +80,8 @@ export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWi
   // The 4-week strip (label + dots + its own gap) claims height only from the
   // bars' leftover, after the breakdown rows and the minimum bars are covered,
   // so it never costs a breakdown row.
-  const DOTS_H = 40, DOTS_GAP = 18;
-  const rowsBottom = shownRows * ROW_H + (hiddenRows > 0 ? 22 : 0);
+  const DOTS_H = u(40), DOTS_GAP = u(18);
+  const rowsBottom = shownRows * ROW_H + (hiddenRows > 0 ? u(22) : 0);
   const showDots = height - fixed - MIN_BARS - rowsBottom >= DOTS_H + DOTS_GAP;
   const barsH = Math.round(Math.max(MIN_BARS, Math.min(
     height * 0.56,
@@ -87,9 +89,9 @@ export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWi
   )));
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', gap: 18 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', gap: u(18) }}>
       <DayBars days={weekly.days} height={barsH} />
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: u(14) }}>
         <StatTile label="Time" value={formatDuration(weekly.totalSeconds)} />
         <StatTile label="Distance" value={formatDistance(weekly.totalDistanceMeters, units)} />
         <StatTile label="Sessions" value={String(weekly.totalSessions)} />
@@ -99,24 +101,24 @@ export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWi
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {weekActs.slice(0, shownRows).map((a) => (
               <div key={a.id} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0',
+                display: 'flex', alignItems: 'center', gap: u(12), padding: `${u(8)}px ${u(0)}`,
                 borderBottom: `1px solid ${PALETTE.rail}`,
               }}>
-                <SportBadgeFor typeKey={a.typeKey} size={36} />
-                <div style={{ minWidth: 0, flex: 1 }}>
+                <SportBadgeFor typeKey={a.typeKey} size={u(36)} />
+                <div style={{ minWidth: u(0), flex: 1 }}>
                   <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.6 }}>
+                  <div style={{ fontSize: u(12), opacity: 0.6 }}>
                     {sportFor(a.typeKey).label} · {relativeDay(a.startLocal, new Date(), timezone)}
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: 18, fontVariantNumeric: 'tabular-nums', fontSize: 14, opacity: 0.8 }}>
+                <div style={{ display: 'flex', gap: u(18), fontVariantNumeric: 'tabular-nums', fontSize: u(14), opacity: 0.8 }}>
                   <span>{formatDistance(a.distanceMeters, units)}</span>
                   <span>{formatDuration(a.durationSeconds)}</span>
                 </div>
               </div>
             ))}
             {hiddenRows > 0 && (
-              <div style={{ opacity: 0.5, fontSize: 12, paddingTop: 6 }}>+{hiddenRows} more</div>
+              <div style={{ opacity: 0.5, fontSize: u(12), paddingTop: u(6) }}>+{hiddenRows} more</div>
             )}
           </div>
         ) : (
@@ -125,12 +127,12 @@ export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWi
             const sport = sportByKey(s.sport);
             return (
               <div key={s.sport} style={{
-                display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0',
+                display: 'flex', alignItems: 'center', gap: u(12), padding: `${u(8)}px ${u(0)}`,
                 borderBottom: `1px solid ${PALETTE.rail}`,
               }}>
-                <SportBadge sport={sport} size={36} />
+                <SportBadge sport={sport} size={u(36)} />
                 <div style={{ flex: 1, fontWeight: 600 }}>{s.sport === 'other' && rest.length ? 'Other' : sport.label}</div>
-                <div style={{ display: 'flex', gap: 18, fontVariantNumeric: 'tabular-nums', fontSize: 14, opacity: 0.8 }}>
+                <div style={{ display: 'flex', gap: u(18), fontVariantNumeric: 'tabular-nums', fontSize: u(14), opacity: 0.8 }}>
                   <span>{s.sessions}×</span>
                   <span>{formatDistance(s.distanceMeters, units)}</span>
                   <span>{formatDuration(s.durationSeconds)}</span>
@@ -139,12 +141,12 @@ export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWi
             );
           })}
           {hiddenRows > 0 && (
-            <div style={{ opacity: 0.5, fontSize: 12, paddingTop: 6 }}>+{hiddenRows} more</div>
+            <div style={{ opacity: 0.5, fontSize: u(12), paddingTop: u(6) }}>+{hiddenRows} more</div>
           )}
         </div>
         )
       ) : (
-        <div style={{ opacity: 0.5, textAlign: 'center', fontSize: 14 }}>No workouts this week yet</div>
+        <div style={{ opacity: 0.5, textAlign: 'center', fontSize: u(14) }}>No workouts this week yet</div>
       ))}
       {showDots && (
         <ConsistencyDots
@@ -161,10 +163,11 @@ export function WeeklyView({ units, timezone, sportFilter, weeklyStyle, weeklyWi
 /** Dots spread across the full module width and scale with it, so a wide
  *  module reads as a strip rather than a huddle in the corner. */
 function ConsistencyDots({ days, color, width }: { days: boolean[]; color: string; width: number }) {
+  const u = useScale();
   const size = Math.max(6, Math.min(14, Math.floor((width / days.length) * 0.45)));
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 8 }}>Last 4 weeks</div>
+      <div style={{ fontSize: u(12), opacity: 0.6, marginBottom: u(8) }}>Last 4 weeks</div>
       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
         {days.map((active, i) => (
           <span key={i} style={{

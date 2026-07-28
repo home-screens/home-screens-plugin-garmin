@@ -191,8 +191,30 @@ const W = 640;
 const H = 420;
 const PAD = 20;
 
+// The shared fixtures build dates from the UTC clock, but the views render
+// "Today"/"Yesterday" against SHOT_TZ (the timezone every shot is rendered
+// with, below) — so on a machine whose UTC date differs from that day, the
+// newest activity shows an absolute date instead of "Today". Rebase every
+// startLocal onto the shot timezone's calendar.
+//
+// Signed, not a fixed one-day nudge: the correction is backwards on a host
+// east of UTC, and the capture box may sit anywhere (a CI runner is usually
+// UTC). Anchored at noon so the arithmetic never lands on a DST boundary.
+const SHOT_TZ = 'America/Chicago';
+const noonUtc = (isoDate: string) => Date.parse(`${isoDate}T12:00:00Z`);
+const DATE_DELTA = noonUtc(new Date().toISOString().slice(0, 10))
+  - noonUtc(new Intl.DateTimeFormat('en-CA', { timeZone: SHOT_TZ }).format(new Date()));
+const fixDates = <T extends { startLocal: string }>(list: T[]): T[] =>
+  list.map((a) => ({
+    ...a,
+    startLocal:
+      iso(noonUtc(a.startLocal.slice(0, 10)) - DATE_DELTA) + a.startLocal.slice(10),
+  }));
+cache.set('garmin:weekly', fixDates(WEEKLY_ACTIVITIES));
+
 const DATA_M = {
   ...DATA,
+  activities: fixDates(ACTIVITIES),
   steps: 8_432, stepGoal: 10_000, intensityMinutes: 118,
   restingHr: 52, stress: 28, sleepScore: 84, activeCalories: 612, calories: 2_214,
   floorsAscended: 12, distanceMeters: 6_437,
@@ -208,26 +230,38 @@ cache.set('garmin:weeklyIm', { minutes: 118, goal: 150 });
 cache.set('garmin:stepsStreak', 12);
 cache.set('garmin:readiness', { ...READINESS, score: 82, level: 'HIGH', sleepScore: 84, sleepFeedback: 'GOOD' });
 
-const SHOTS: [string, React.ComponentType<Record<string, unknown>>][] = [
+// Optional third element overrides the shot box for views that need a
+// taller stage (the activity list shows more rows with more height).
+const SHOTS: [string, React.ComponentType<Record<string, unknown>>, { w?: number; h?: number }?][] = [
   ['summary', SummaryView],
   ['body-battery', BodyBatteryView],
+  ['stress', StressView],
   ['sleep', SleepView],
-  ['weekly', WeeklyView],
-  ['activity-hero', ActivityHeroView],
+  ['hrv', HrvView],
+  ['heart-rate', HeartRateView],
   ['training-readiness', TrainingReadinessView],
+  ['training-status', TrainingStatusView],
+  ['weekly', WeeklyView],
+  ['activity-list', ActivityListView, { h: 560 }],
+  ['activity-hero', ActivityHeroView],
+  ['race-predictions', RacePredictionsView],
+  ['records', RecordsView],
+  ['weight', WeightView],
 ];
 
 let shotBoxes = '';
-for (const [viewName, View] of SHOTS) {
-  const cw = W - PAD * 2;
-  const ch = H - PAD * 2;
+for (const [viewName, View, dims] of SHOTS) {
+  const bw = dims?.w ?? W;
+  const bh = dims?.h ?? H;
+  const cw = bw - PAD * 2;
+  const ch = bh - PAD * 2;
   const props = {
-    data: DATA_M, units: 'imperial', timezone: 'America/Chicago', activityCount: 20,
+    data: DATA_M, units: 'imperial', timezone: SHOT_TZ, activityCount: 20,
     tier: tierFor(cw, ch), width: cw, height: ch,
     sportFilter: 'all', weeklyStyle: 'bySport', weeklyWindow: 'rolling', refreshMs: 900_000,
   };
   shotBoxes += `
-    <div class="module" data-view="${viewName}" style="width:${W}px;height:${H}px">
+    <div class="module" data-view="${viewName}" style="width:${bw}px;height:${bh}px">
       ${renderToStaticMarkup(React.createElement(View, props))}
     </div>`;
 }
@@ -248,9 +282,11 @@ mkdirSync(shotDir, { recursive: true });
 const shotPage = join(shotDir, 'harness.html');
 writeFileSync(shotPage, shotHtml);
 
+const maxW = Math.max(W, ...SHOTS.map(([, , d]) => d?.w ?? W));
+const maxH = Math.max(H, ...SHOTS.map(([, , d]) => d?.h ?? H));
 const shotBrowser = await chromium.launch();
 const page2 = await shotBrowser.newPage({
-  viewport: { width: W + 60, height: H + 60 },
+  viewport: { width: maxW + 60, height: maxH + 60 },
   deviceScaleFactor: 2,
 });
 await page2.goto(`file://${shotPage}`);

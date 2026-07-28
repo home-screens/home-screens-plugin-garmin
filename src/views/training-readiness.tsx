@@ -4,6 +4,7 @@ import { EmptyState, Ring, StatTile } from '../components';
 import { useTrainingReadiness } from '../hooks';
 import { isWide, stackGap } from '../size';
 import { formatDuration, sentencePhrase } from '../format';
+import { useScale } from '../scale';
 
 /** Garmin's own level colors (fēnix 7 manual): Prime purple, High blue,
  *  Moderate green, Low orange, Poor red. */
@@ -25,6 +26,7 @@ const QUALITY_COLOR: Record<string, string> = {
  *  the box fills instead of accruing dead bands. Wide-short boxes get
  *  side-by-side panes (ring left, factors right) instead of the stack. */
 export function TrainingReadinessView({ timezone, width, height, refreshMs }: ViewProps) {
+  const u = useScale();
   const load = useTrainingReadiness(timezone, refreshMs);
 
   if (load.status === 'authExpired') {
@@ -57,24 +59,24 @@ export function TrainingReadinessView({ timezone, width, height, refreshMs }: Vi
 
   // Height budget: estimate the non-ring pieces (SLACK covers the hero's
   // internal gap and line-height rounding), give the ring the rest.
-  const TILE_ROW = 50, TILE_GAP = 22, MIN_RING = 150, SLACK = 16;
-  const feedbackH = r.feedback ? 30 : 0;
+  const TILE_ROW = u(50), TILE_GAP = u(22), MIN_RING = u(150), SLACK = u(16);
+  const feedbackH = r.feedback ? u(30) : 0;
   const rowsH = (n: number) => (n === 0 ? 0 : Math.ceil(n / 2) * TILE_ROW + (Math.ceil(n / 2) - 1) * TILE_GAP + gap);
   const fits = (n: number) => MIN_RING + feedbackH + rowsH(n) + SLACK <= height;
   const tileCount = wide ? (height >= 300 ? 6 : 4) : fits(6) ? 6 : fits(4) ? 4 : 0;
   const tiles = tileCount > 0 ? factorTiles(r, tileCount === 6) : [];
   const ringSize = wide
-    ? Math.round(Math.min(360, Math.max(150, height - feedbackH - 8)))
-    : Math.round(Math.min(Math.min(440, width * 0.72), Math.max(140, height - feedbackH - rowsH(tiles.length) - SLACK)));
+    ? Math.round(Math.min(u(360), Math.max(u(150), height - feedbackH - u(8))))
+    : Math.round(Math.min(Math.min(u(440), width * 0.72), Math.max(u(140), height - feedbackH - rowsH(tiles.length) - SLACK)));
 
   const hero = (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u(8) }}>
       <Ring
-        ratio={r.score / 100} size={ringSize} stroke={18} color={level.color}
+        ratio={r.score / 100} size={ringSize} stroke={u(18)} color={level.color}
         label={String(r.score)} sub={level.label}
       />
       {r.feedback && (
-        <div style={{ fontSize: 14, opacity: 0.75, textAlign: 'center' }}>
+        <div style={{ fontSize: u(14), opacity: 0.75, textAlign: 'center' }}>
           {sentencePhrase(r.feedback)}
         </div>
       )}
@@ -83,9 +85,9 @@ export function TrainingReadinessView({ timezone, width, height, refreshMs }: Vi
 
   if (wide && tiles.length > 0) {
     return (
-      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: 80 }}>
+      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: u(80) }}>
         {hero}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '22px 48px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${u(22)}px ${u(48)}px` }}>
           {tiles.map(([label, value, unit, color]) => (
             <StatTile key={label} label={label} value={value} unit={unit} color={color} />
           ))}
@@ -101,7 +103,7 @@ export function TrainingReadinessView({ timezone, width, height, refreshMs }: Vi
     }}>
       {hero}
       {tiles.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '22px 32px', width: '100%', maxWidth: 520 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${u(22)}px ${u(32)}px`, width: '100%', maxWidth: u(520) }}>
           {tiles.map(([label, value, unit, color]) => (
             <StatTile key={label} label={label} value={value} unit={unit} color={color} align="center" />
           ))}

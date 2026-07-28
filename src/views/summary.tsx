@@ -5,12 +5,14 @@ import { Ring, Sparkline, StatTile } from '../components';
 import { formatCount, formatDistance } from '../format';
 import { useStepsStreak, useWeeklyIntensity } from '../hooks';
 import { isWide, stackGap } from '../size';
+import { useScale } from '../scale';
 
 /** Steps ring (with concentric intensity ring) + stat tiles; the tile count
  *  (4 or 6) comes from the height budget, the ring absorbs the leftover, and
  *  any remaining height becomes the Body Battery sparkline. Wide-short boxes
  *  get side-by-side panes (ring left, tiles right). */
 export function SummaryView({ data, units, timezone, width, height, refreshMs }: ViewProps) {
+  const u = useScale();
   const stepRatio = data.steps != null && data.stepGoal ? data.steps / data.stepGoal : 0;
   // The intensity goal is WEEKLY, so the inner ring compares this week's
   // minutes against it. Until (or unless) that fetch lands, fall back to
@@ -30,9 +32,9 @@ export function SummaryView({ data, units, timezone, width, height, refreshMs }:
 
   // Height budget: tiles first, ring absorbs the leftover (up to its cap),
   // any remainder becomes the sparkline.
-  const TILE_ROW = 50, TILE_GAP = 22, MIN_RING = 140, SLACK = 16;
-  const heroExtra = (intensityLine ? 24 : 0)
-    + (data.distanceMeters != null ? 24 : 0);
+  const TILE_ROW = u(50), TILE_GAP = u(22), MIN_RING = u(140), SLACK = u(16);
+  const heroExtra = (intensityLine ? u(24) : 0)
+    + (data.distanceMeters != null ? u(24) : 0);
   const rowsH = (n: number) => Math.ceil(n / 2) * TILE_ROW + (Math.ceil(n / 2) - 1) * TILE_GAP + gap;
   const fits = (n: number) => MIN_RING + heroExtra + rowsH(n) + SLACK <= height;
   const tileCount = wide ? 6 : fits(6) ? 6 : fits(4) ? 4 : 0;
@@ -40,25 +42,25 @@ export function SummaryView({ data, units, timezone, width, height, refreshMs }:
 
   const ringAvail = height - heroExtra - (tiles.length ? rowsH(tiles.length) : 0) - SLACK;
   const ringSize = wide
-    ? Math.round(Math.min(340, Math.max(150, height - heroExtra - 8)))
-    : Math.round(Math.min(Math.min(400, width * 0.72), Math.max(MIN_RING, ringAvail)));
-  const sparkAvail = ringAvail - ringSize - gap - 18;
-  const sparkH = Math.round(Math.max(80, Math.min(220, sparkAvail)));
-  const showSpark = !wide && data.bodyBatteryCurve.length >= 2 && sparkAvail >= 90;
+    ? Math.round(Math.min(u(340), Math.max(u(150), height - heroExtra - u(8))))
+    : Math.round(Math.min(Math.min(u(400), width * 0.72), Math.max(MIN_RING, ringAvail)));
+  const sparkAvail = ringAvail - ringSize - gap - u(18);
+  const sparkH = Math.round(Math.max(u(80), Math.min(u(220), sparkAvail)));
+  const showSpark = !wide && data.bodyBatteryCurve.length >= 2 && sparkAvail >= u(90);
 
   const hero = (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u(6) }}>
       <Ring
-        ratio={stepRatio} size={ringSize} stroke={18} color={PALETTE.steps}
+        ratio={stepRatio} size={ringSize} stroke={u(18)} color={PALETTE.steps}
         label={formatCount(data.steps)}
         sub={data.stepGoal ? `of ${formatCount(data.stepGoal)}` : 'steps'}
         inner={weeklyIm ? { ratio: intensityRatio, color: PALETTE.stress } : undefined}
       />
       {intensityLine && (
-        <div style={{ fontSize: 12, opacity: 0.65 }}>{intensityLine}</div>
+        <div style={{ fontSize: u(12), opacity: 0.65 }}>{intensityLine}</div>
       )}
       {data.distanceMeters != null && (
-        <div style={{ fontSize: 14, opacity: 0.75 }}>
+        <div style={{ fontSize: u(14), opacity: 0.75 }}>
           Distance today · {formatDistance(data.distanceMeters, units)}
         </div>
       )}
@@ -67,9 +69,9 @@ export function SummaryView({ data, units, timezone, width, height, refreshMs }:
 
   if (wide) {
     return (
-      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: 80 }}>
+      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: u(80) }}>
         {hero}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '22px 48px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${u(22)}px ${u(48)}px` }}>
           {tiles.map(([label, value, unit, color]) => (
             <StatTile key={label} label={label} value={value} unit={unit} color={color} />
           ))}
@@ -85,7 +87,7 @@ export function SummaryView({ data, units, timezone, width, height, refreshMs }:
     }}>
       {hero}
       {tiles.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '22px 32px', width: '100%', maxWidth: 520 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${u(22)}px ${u(32)}px`, width: '100%', maxWidth: u(520) }}>
           {tiles.map(([label, value, unit, color]) => (
             <StatTile key={label} label={label} value={value} unit={unit} color={color} align="center" />
           ))}
@@ -93,7 +95,7 @@ export function SummaryView({ data, units, timezone, width, height, refreshMs }:
       )}
       {showSpark && (
         <div style={{ width: '100%' }}>
-          <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 6 }}>Body Battery today</div>
+          <div style={{ fontSize: u(12), opacity: 0.6, marginBottom: u(6) }}>Body Battery today</div>
           <Sparkline points={data.bodyBatteryCurve} width={width} height={sparkH} color={PALETTE.bodyBattery} />
         </div>
       )}

@@ -2,6 +2,8 @@ import React from 'react';
 import type { PluginComponentProps } from './hs-plugin';
 import type { GarminView, SportFilter, Units, ViewProps, WeeklyStyle, WeeklyWindow } from './types';
 import { useGarminData, useConnection, useModuleSize } from './hooks';
+import { hostFrameStyle } from './host-style';
+import { ScaleProvider } from './scale';
 import { deriveProvidedKeys } from './shared-state';
 import { EmptyState } from './components';
 import {
@@ -44,16 +46,17 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
   const { ref, tier, width, height } = useModuleSize();
 
   const root: React.CSSProperties = {
-    width: '100%', height: '100%', overflow: 'hidden', boxSizing: 'border-box',
+    ...hostFrameStyle(style),
     display: 'flex', flexDirection: 'column',
-    fontFamily: style.fontFamily, fontSize: style.fontSize, color: style.textColor,
-    backgroundColor: style.backgroundColor, borderRadius: style.borderRadius,
-    padding: style.padding, opacity: style.opacity,
-    backdropFilter: `blur(${style.backdropBlur ?? 0}px)`,
-    WebkitBackdropFilter: `blur(${style.backdropBlur ?? 0}px)`,
   };
 
-  return <div style={root} ref={ref}>{renderBody()}</div>;
+  // Every dimension below comes from useScale(); this provider is the only
+  // place the host's Text size enters the view tree. See scale.tsx.
+  return (
+    <div style={root} ref={ref}>
+      <ScaleProvider fontSize={style.fontSize}>{renderBody()}</ScaleProvider>
+    </div>
+  );
 
   function renderBody() {
     if (connected === null) return <EmptyState title="Loading" body="Checking your Garmin connection..." />;

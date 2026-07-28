@@ -7,6 +7,7 @@ import { formatDistance } from '../format';
 import { formatMetric, matchesFilter, metricsFor, sportByKey, sportFor } from '../sports';
 import { relativeDay } from '../aggregate';
 import { useActivityDetail } from '../hooks';
+import { useScale } from '../scale';
 
 /** Newest activity matching sportFilter: banner + metric grid always. The
  *  detail sections (trace chart, HR-zone bars, splits table) each appear when
@@ -14,6 +15,7 @@ import { useActivityDetail } from '../hooks';
  *  the box fills. Detail endpoints degrade independently: no traces → no chart,
  *  no zones → no bars, no detail at all → stats from the list row. */
 export function ActivityHeroView({ data, units, timezone, width, height, sportFilter }: ViewProps) {
+  const u = useScale();
   const activity = data.activities.find((a) => matchesFilter(a.typeKey, sportFilter)) ?? null;
   const detail = useActivityDetail(activity?.id ?? null);
 
@@ -52,10 +54,10 @@ export function ActivityHeroView({ data, units, timezone, width, height, sportFi
   // (header + ~23/row) are added when they fit, reserving the chart's minimum;
   // the chart then absorbs whatever height remains. Estimates run slightly
   // high so the box never overflows.
-  const G = 16, SLACK = 12, MIN_CHART = 100, CHART_CAP = 240;
-  const ZONES_H = 96, SPLIT_HEADER = 22, SPLIT_ROW = 23, MORE_H = 22;
-  const bannerH = compact ? 48 : 56;
-  const gridH = gridRows * 50 + (gridRows - 1) * 14;
+  const G = u(16), SLACK = u(12), MIN_CHART = u(100), CHART_CAP = u(240);
+  const ZONES_H = u(96), SPLIT_HEADER = u(22), SPLIT_ROW = u(23), MORE_H = u(22);
+  const bannerH = compact ? u(48) : u(56);
+  const gridH = gridRows * u(50) + (gridRows - 1) * u(14);
   const chartReserve = hasTraces ? MIN_CHART : 0;
   const baseUsed = bannerH + gridH;
 
@@ -82,29 +84,29 @@ export function ActivityHeroView({ data, units, timezone, width, height, sportFi
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: G }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <SportBadgeFor typeKey={activity.typeKey} size={compact ? 44 : 52} />
-        <div style={{ minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: compact ? 18 : 22, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: u(12) }}>
+        <SportBadgeFor typeKey={activity.typeKey} size={compact ? u(44) : u(52)} />
+        <div style={{ minWidth: u(0), flex: 1 }}>
+          <div style={{ fontSize: compact ? u(18) : u(22), fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {activity.name}
           </div>
-          <div style={{ fontSize: 13, opacity: 0.65 }}>
+          <div style={{ fontSize: u(13), opacity: 0.65 }}>
             {sport.label} · {relativeDay(activity.startLocal, new Date(), timezone)}
           </div>
         </div>
         {source.distanceMeters > 0 && (
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
-            <div style={{ fontSize: 12, opacity: 0.6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            <div style={{ fontSize: u(12), opacity: 0.6, textTransform: 'uppercase', letterSpacing: u(0.5) }}>
               Distance
             </div>
-            <div style={{ fontSize: compact ? 24 : 30, fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: compact ? u(24) : u(30), fontWeight: 700, lineHeight: 1.1, fontVariantNumeric: 'tabular-nums' }}>
               {formatDistance(source.distanceMeters, units)}
             </div>
           </div>
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols}, 1fr)`, gap: u(14) }}>
         {shown.map((k) => {
           const m = formatMetric(k, source, units);
           return <StatTile key={m.key} label={m.label} value={m.value} color={m.key === 'avgHr' ? PALETTE.heart : undefined} />;

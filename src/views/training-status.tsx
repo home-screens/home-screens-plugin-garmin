@@ -4,6 +4,7 @@ import { EmptyState, MarkerBar, StatTile } from '../components';
 import { useTrainingStatus } from '../hooks';
 import { isWide, stackGap } from '../size';
 import { formatShortDate, loadFocusLabel, sentencePhrase } from '../format';
+import { clamp, useScale } from '../scale';
 
 const STATUS_COLOR: Record<string, string> = {
   PRODUCTIVE: '#22c55e', PEAKING: '#a855f7', MAINTAINING: '#f59e0b',
@@ -25,6 +26,7 @@ const HRV_COLOR: Record<string, string> = {
  *  a centered width-capped stack, or side-by-side panes (status left, stats
  *  right) when the box is short and wide. */
 export function TrainingStatusView({ timezone, width, height, refreshMs }: ViewProps) {
+  const u = useScale();
   const load = useTrainingStatus(timezone, refreshMs);
 
   if (load.status === 'authExpired') {
@@ -57,22 +59,37 @@ export function TrainingStatusView({ timezone, width, height, refreshMs }: ViewP
   const since = formatShortDate(s.sinceDate);
   const focus = loadFocusLabel(s.loadFocus);
   // Extras appear once they actually fit, independent of the tier buckets.
-  const showExtras = height >= 340;
+  // Scaled, because what has to fit is the scaled content: with the hero and
+  // the tiles now following the host's Text size, a fixed 340 admits a
+  // load tunnel and a fourth tile onto a box that can no longer hold them.
+  const showExtras = height >= u(340);
   const tiles = statTiles(s, showExtras);
 
   const header = (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u(6) }}>
       <div style={{
-        fontSize: Math.round(Math.max(34, Math.min(72, height * 0.115))),
+        // Proportional to the box, but the bounds — and the proportion
+        // between them — move with the host's Text size like every other
+        // dimension here. Left unscaled, the view's largest text was the one
+        // thing on it that ignored the slider entirely.
+        //
+        // Also bounded by the width, which a number-hero doesn't need but a
+        // word-hero does: "Unproductive" wraps to a second line long before
+        // it runs out of vertical budget, and the second line comes out of
+        // the space the tiles below are counting on.
+        fontSize: Math.round(Math.min(
+          clamp(u(height * 0.115), u(34), u(72)),
+          width / (statusLabel.length * 0.58),
+        )),
         fontWeight: 700, color: statusColor, lineHeight: 1.1,
       }}>
         {statusLabel}
       </div>
-      <div style={{ fontSize: 13, opacity: 0.6 }}>
+      <div style={{ fontSize: u(13), opacity: 0.6 }}>
         Training status{since ? ` · since ${since}` : ''}
       </div>
       {focus && (
-        <div style={{ fontSize: 15, opacity: 0.8, marginTop: 4 }}>
+        <div style={{ fontSize: u(15), opacity: 0.8, marginTop: u(4) }}>
           Load focus · {focus}
         </div>
       )}
@@ -81,10 +98,10 @@ export function TrainingStatusView({ timezone, width, height, refreshMs }: ViewP
 
   if (isWide(width, height)) {
     return (
-      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: 80 }}>
+      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: u(80) }}>
         {header}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-          {showExtras && <LoadTunnel s={s} width={Math.min(width * 0.4, 380)} />}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: u(22) }}>
+          {showExtras && <LoadTunnel s={s} width={Math.min(width * 0.4, u(380))} />}
           {tiles.map(([label, value, unit, color]) => (
             <StatTile key={label} label={label} value={value} unit={unit} color={color} />
           ))}
@@ -103,19 +120,19 @@ export function TrainingStatusView({ timezone, width, height, refreshMs }: ViewP
       {header}
       {showExtras && (
         <LoadTunnel
-          s={s} width={Math.min(width, 640)}
-          barHeight={Math.round(Math.max(26, Math.min(40, height * 0.055)))}
+          s={s} width={Math.min(width, u(640))}
+          barHeight={Math.round(clamp(u(height * 0.055), u(26), u(40)))}
         />
       )}
       {tiles.length > 0 && (
         <div style={{
           display: 'grid', gridTemplateColumns: `repeat(${tiles.length >= 4 ? 2 : tiles.length}, 1fr)`,
-          gap: '22px 32px', width: '100%', maxWidth: tiles.length >= 4 ? 520 : 640,
+          gap: `${u(22)}px ${u(32)}px`, width: '100%', maxWidth: tiles.length >= 4 ? u(520) : u(640),
         }}>
           {tiles.map(([label, value, unit, color]) => (
             <StatTile
               key={label} label={label} value={value} unit={unit} color={color} align="center"
-              valueSize={Math.round(Math.max(26, Math.min(34, height * 0.055)))}
+              valueSize={Math.round(clamp(u(height * 0.055), u(26), u(34)))}
             />
           ))}
         </div>
@@ -149,13 +166,14 @@ function statTiles(
 function LoadTunnel({ s, width, barHeight }: {
   s: TrainingStatusInfo; width: number; barHeight?: number;
 }) {
+  const u = useScale();
   const { weeklyLoad, loadTunnelMin, loadTunnelMax } = s;
   if (weeklyLoad == null || loadTunnelMin == null || loadTunnelMax == null || loadTunnelMax <= 0) {
     return null;
   }
   return (
     <div>
-      <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 6 }}>
+      <div style={{ fontSize: u(12), opacity: 0.6, marginBottom: u(6) }}>
         7-day load · {weeklyLoad} (optimal {loadTunnelMin}–{loadTunnelMax})
       </div>
       <MarkerBar

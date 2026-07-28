@@ -5,12 +5,14 @@ import { EmptyState, StatTile } from '../components';
 import { BandLineChart } from '../charts';
 import { useHeartRate } from '../hooks';
 import { isWide, stackGap } from '../size';
+import { clamp, useScale } from '../scale';
 
 /** Resting HR + 7d average always; today's HR line and min/max tiles appear
  *  as soon as the measured height fits them, and the chart grows with the
  *  box. Wide-short boxes get side-by-side panes (hero left, chart + tiles
  *  right). */
 export function HeartRateView({ timezone, width, height, refreshMs }: ViewProps) {
+  const u = useScale();
   const load = useHeartRate(timezone, refreshMs);
 
   if (load.status === 'authExpired') {
@@ -40,33 +42,36 @@ export function HeartRateView({ timezone, width, height, refreshMs }: ViewProps)
   const wide = isWide(width, height);
   const gap = stackGap(height);
   // Height budget: hero + tiles are fixed-ish; the chart absorbs the rest.
-  const heroFont = height >= 500 ? 76 : 64;
-  const heroH = heroFont + 30;
-  const showMinMax = wide || height >= 340;
+  const heroFont = height >= 500 ? u(76) : u(64);
+  const heroH = heroFont + u(30);
+  // Scaled: what has to fit is the scaled tile row, so the threshold moves
+  // with it. Left fixed, the gate admits four tiles onto a box the type has
+  // already filled.
+  const showMinMax = wide || height >= u(340);
   const tiles: [string, number | null][] = showMinMax
     ? [['Resting', hr.resting], ['7d average', hr.sevenDayAvg], ['Low', hr.min], ['High', hr.max]]
     : [['Resting', hr.resting], ['7d average', hr.sevenDayAvg]];
-  const tilesH = 50 + gap;
-  const chartLeftover = height - heroH - tilesH - gap - 18 - 12;
-  const showChart = hr.curve.length >= 2 && (wide || chartLeftover >= 70);
-  const chartWidth = wide ? Math.min(width * 0.45, 480) : Math.min(width, 640);
+  const tilesH = u(50) + gap;
+  const chartLeftover = height - heroH - tilesH - gap - u(18) - u(12);
+  const showChart = hr.curve.length >= 2 && (wide || chartLeftover >= u(70));
+  const chartWidth = wide ? Math.min(width * 0.45, u(480)) : Math.min(width, u(640));
   const chartHeight = wide
-    ? Math.round(Math.max(70, Math.min(360, height - 200)))
-    : Math.round(Math.max(70, Math.min(440, chartLeftover)));
+    ? Math.round(clamp(height - u(200), u(70), u(360)))
+    : Math.round(clamp(chartLeftover, u(70), u(440)));
 
   const hero = (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: u(4) }}>
       <div style={{ fontSize: heroFont, fontWeight: 700, lineHeight: 1, color: PALETTE.heart }}>
         {hr.resting != null ? hr.resting : '--'}
-        <span style={{ fontSize: 22, opacity: 0.7, marginLeft: 6 }}>bpm</span>
+        <span style={{ fontSize: u(22), opacity: 0.7, marginLeft: u(6) }}>bpm</span>
       </div>
-      <div style={{ fontSize: 13, opacity: 0.6 }}>Resting heart rate</div>
+      <div style={{ fontSize: u(13), opacity: 0.6 }}>Resting heart rate</div>
     </div>
   );
 
   const chart = showChart && (
     <div>
-      <div style={{ fontSize: 12, opacity: 0.6, marginBottom: 6 }}>Today</div>
+      <div style={{ fontSize: u(12), opacity: 0.6, marginBottom: u(6) }}>Today</div>
       <BandLineChart
         points={hr.curve} width={chartWidth} height={chartHeight}
         color={PALETTE.heart}
@@ -76,11 +81,11 @@ export function HeartRateView({ timezone, width, height, refreshMs }: ViewProps)
 
   if (wide) {
     return (
-      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: 80 }}>
+      <div style={{ display: 'flex', height: '100%', alignItems: 'center', justifyContent: 'center', gap: u(80) }}>
         {hero}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: chartWidth }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: u(20), width: chartWidth }}>
           {chart}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px 48px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: `${u(18)}px ${u(48)}px` }}>
             {tiles.map(([label, value]) => (
               <StatTile key={label} label={label} value={value != null ? String(value) : '--'} unit="bpm" />
             ))}
@@ -99,7 +104,7 @@ export function HeartRateView({ timezone, width, height, refreshMs }: ViewProps)
       {chart}
       <div style={{
         display: 'grid', gridTemplateColumns: `repeat(${tiles.length}, 1fr)`,
-        gap: '22px 32px', width: '100%', maxWidth: 640,
+        gap: `${u(22)}px ${u(32)}px`, width: '100%', maxWidth: u(640),
       }}>
         {tiles.map(([label, value]) => (
           <StatTile key={label} label={label} value={value != null ? String(value) : '--'} unit="bpm" align="center" />
