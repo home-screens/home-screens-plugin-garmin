@@ -2,7 +2,7 @@ import React from 'react';
 import type { PluginComponentProps } from './hs-plugin';
 import type { GarminView, SportFilter, Units, ViewProps, WeeklyStyle, WeeklyWindow } from './types';
 import { useGarminData, useConnection, useModuleSize } from './hooks';
-import { hostFrameStyle } from './host-style';
+import { useHostFrameStyle } from './host-style';
 import { ScaleProvider } from './scale';
 import { deriveProvidedKeys } from './shared-state';
 import { EmptyState } from './components';
@@ -45,8 +45,9 @@ export default function Garmin({ config, style, timezone }: PluginComponentProps
   const load = useGarminData(connected === true, tz, fetchCount, refreshMs);
   const { ref, tier, width, height } = useModuleSize();
 
+  const frame = useHostFrameStyle(style);
   const root: React.CSSProperties = {
-    ...hostFrameStyle(style),
+    ...frame,
     display: 'flex', flexDirection: 'column',
   };
 

@@ -3,13 +3,37 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  hostFrameStyle, colorWithAlpha, moduleShadow, parseColor, scalePx,
+  hostFrameStyle, colorWithAlpha, moduleShadow, parseColor, parseRgba,
+  resolveColor, resolveFontStack, scalePx,
 } from './host-style';
 import type { HostModuleStyle } from './host-style';
 
+/** The narrowest `document` `resolveColor`'s probe needs. Tests run in node,
+ *  so there is no DOM until one is put there — which is exactly the situation
+ *  the caching rule has to get right. Returns how many probes were made. */
+function withFakeDom(computedColor: string, run: () => void): number {
+  let probes = 0;
+  const g = globalThis as Record<string, unknown>;
+  g.document = {
+    body: { appendChild: () => {} },
+    createElement: () => {
+      probes += 1;
+      return { style: { color: '', display: '' }, remove: () => {} };
+    },
+  };
+  g.getComputedStyle = () => ({ color: computedColor });
+  try {
+    run();
+  } finally {
+    delete g.document;
+    delete g.getComputedStyle;
+  }
+  return probes;
+}
+
 const BASE: HostModuleStyle = {
   fontSize: 16,
-  fontFamily: 'Inter',
+  fontFamily: 'inter',
   textColor: '#ffffff',
   backgroundColor: '#000000',
   borderRadius: 12,
@@ -22,7 +46,6 @@ describe('hostFrameStyle', () => {
   it('carries the plain style fields through to the root', () => {
     const s = hostFrameStyle(BASE);
     expect(s.fontSize).toBe(16);
-    expect(s.fontFamily).toBe('Inter');
     expect(s.color).toBe('#ffffff');
     expect(s.borderRadius).toBe(12);
     expect(s.padding).toBe(16);
@@ -122,45 +145,122 @@ describe('hostFrameStyle', () => {
     });
   });
 
-  it('drops its own surface when chromeless', () => {
-    const s = hostFrameStyle(
-      { ...BASE, borderWidth: 2, shadowSize: 10, backdropBlur: 6 },
-      { chromeless: true },
-    );
-    expect(s.backgroundColor).toBe('transparent');
-    expect(s.border).toBeUndefined();
-    expect(s.boxShadow).toBeUndefined();
-    expect(s.backdropFilter).toBeUndefined();
-    // Type and color still come from the host.
-    expect(s.fontSize).toBe(16);
-    expect(s.color).toBe('#ffffff');
+  // The host stores a font ID and resolves it in its own wrapper. A plugin
+  // that emits the ID verbatim renders in the browser default while every
+  // module beside it renders Inter.
+  describe('font family', () => {
+    it('resolves the host font ID to a real CSS stack', () => {
+      expect(hostFrameStyle(BASE).fontFamily)
+        .toBe('var(--font-inter), system-ui, sans-serif');
+      expect(hostFrameStyle({ ...BASE, fontFamily: 'playfair' }).fontFamily)
+        .toBe('var(--font-playfair), Georgia, serif');
+    });
+
+    it('upgrades the raw stacks older configs stored', () => {
+      expect(resolveFontStack('Inter, system-ui, sans-serif'))
+        .toBe('var(--font-inter), system-ui, sans-serif');
+      expect(resolveFontStack('monospace')).toBe('ui-monospace, "SF Mono", Menlo, monospace');
+    });
+
+    it('passes through anything the table does not know', () => {
+      // A font the host adds after this plugin ships should still render.
+      expect(resolveFontStack('Helvetica Neue, sans-serif')).toBe('Helvetica Neue, sans-serif');
+      expect(resolveFontStack('')).toBeUndefined();
+      expect(resolveFontStack(undefined)).toBeUndefined();
+    });
   });
 });
 
 describe('parseColor', () => {
   it('reads the forms the host stores', () => {
-    expect(parseColor('#fff')).toEqual([255, 255, 255, 1]);
-    expect(parseColor('#1e3a5f')).toEqual([30, 58, 95, 1]);
-    expect(parseColor('rgb(10, 20, 30)')).toEqual([10, 20, 30, 1]);
-    expect(parseColor('rgba(10, 20, 30, 0.5)')).toEqual([10, 20, 30, 0.5]);
-  });
-
-  it('reads the space-separated form the color picker also stores', () => {
-    // Succeeding here while dropping the alpha is the dangerous failure: the
-    // caller has no way to tell, and renders at twice the intended opacity.
-    expect(parseColor('rgb(0 0 0 / 50%)')).toEqual([0, 0, 0, 0.5]);
-    expect(parseColor('rgb(10 20 30)')).toEqual([10, 20, 30, 1]);
-    expect(parseColor('rgba(10 20 30 / 0.25)')).toEqual([10, 20, 30, 0.25]);
+    expect(parseColor('#fff')).toEqual([255, 255, 255]);
+    expect(parseColor('#1e3a5f')).toEqual([30, 58, 95]);
+    expect(parseColor('rgb(10, 20, 30)')).toEqual([10, 20, 30]);
+    expect(parseColor('rgba(10, 20, 30, 0.5)')).toEqual([10, 20, 30]);
   });
 
   it('returns null rather than guessing', () => {
     expect(parseColor('rebeccapurple')).toBeNull();
     expect(parseColor('')).toBeNull();
     expect(parseColor('#12345')).toBeNull();
-    // Percentage channels are left to the browser rather than half-read.
-    expect(parseColor('rgb(100% 0% 0%)')).toBeNull();
+  });
+});
+
+describe('parseRgba', () => {
+  it('reads the alpha the host picker lets a user type', () => {
+    // Every one of these is a valid CSS color the picker stores verbatim.
+    expect(parseRgba('rgba(10, 20, 30, 0.5)')).toEqual([10, 20, 30, 0.5]);
+    expect(parseRgba('rgb(10 20 30 / 50%)')).toEqual([10, 20, 30, 0.5]);
+    expect(parseRgba('rgba(10 20 30 / 0.5)')).toEqual([10, 20, 30, 0.5]);
+    expect(parseRgba('rgba(10, 20, 30, 50%)')).toEqual([10, 20, 30, 0.5]);
+    expect(parseRgba('#0000ff80')).toEqual([0, 0, 255, 128 / 255]);
+    expect(parseRgba('#00f8')).toEqual([0, 0, 255, 136 / 255]);
+  });
+
+  it('defaults to fully opaque when no alpha is given', () => {
+    expect(parseRgba('#fff')).toEqual([255, 255, 255, 1]);
+    expect(parseRgba('rgb(1, 2, 3)')).toEqual([1, 2, 3, 1]);
+    expect(parseRgba('rgb(10 20 30)')).toEqual([10, 20, 30, 1]);
+  });
+
+  it('reads percentage channels as percentages, not as 0-255', () => {
+    expect(parseRgba('rgb(100%, 0%, 50%)')).toEqual([255, 0, 128, 1]);
+  });
+
+  it('refuses a partial read rather than dropping what it cannot parse', () => {
+    expect(parseRgba('hsl(0 0% 10%)')).toBeNull();
+    expect(parseRgba('rebeccapurple')).toBeNull();
+    expect(parseRgba('#12345')).toBeNull();
+    expect(parseRgba('rgb(1, 2)')).toBeNull();
+    expect(parseRgba('rgba(1, 2, 3, 4, 5)')).toBeNull();
+    expect(parseRgba('rgba(1, 2, 3, 2)')).toBeNull();
+    expect(parseRgba('rgb(300, 0, 0)')).toBeNull();
     // Trailing junk must not be ignored by an unanchored match.
-    expect(parseColor('rgb(10, 20, 30) drop shadow')).toBeNull();
+    expect(parseRgba('rgb(10, 20, 30) drop shadow')).toBeNull();
+  });
+});
+
+describe('resolveColor', () => {
+  // The cache exists because the host re-renders on a tick. What it must not
+  // cache is a fallback taken when there was no DOM to ask in the first place
+  // — a plugin evaluated before <body> mounts would otherwise render every
+  // later frame against a null it can never revisit.
+  it('does not cache the fallback it returns before a DOM exists', () => {
+    const COLOR = 'rebeccapurple';
+    // Phase 1: no document, so nothing can answer.
+    expect(resolveColor(COLOR)).toBeNull();
+    // Phase 2: the same string, now that the browser can be asked.
+    withFakeDom('rgb(102, 51, 153)', () => {
+      expect(resolveColor(COLOR)).toBe('rgb(102, 51, 153)');
+    });
+  });
+
+  it('caches the answer once a probe has actually run', () => {
+    const COLOR = 'papayawhip';
+    const first = withFakeDom('rgb(255, 239, 213)', () => {
+      expect(resolveColor(COLOR)).toBe('rgb(255, 239, 213)');
+    });
+    expect(first).toBe(1);
+    // A second pass must not touch the DOM again, and must not change answer
+    // even though this fake would now report something else.
+    const second = withFakeDom('rgb(0, 0, 0)', () => {
+      expect(resolveColor(COLOR)).toBe('rgb(255, 239, 213)');
+    });
+    expect(second).toBe(0);
+  });
+
+  it('caches a definitive "not a color" — a probe ran and settled it', () => {
+    const NONSENSE = 'not-a-color-at-all';
+    // The fake leaves `style.color` empty for anything, standing in for the
+    // browser rejecting the value outright.
+    const first = withFakeDom('', () => {
+      expect(resolveColor(NONSENSE)).toBeNull();
+    });
+    expect(first).toBe(1);
+    const second = withFakeDom('', () => {
+      expect(resolveColor(NONSENSE)).toBeNull();
+    });
+    expect(second).toBe(0);
   });
 });
 
@@ -169,9 +269,13 @@ describe('colorWithAlpha', () => {
     expect(colorWithAlpha('#abcdef', 1)).toBe('#abcdef');
   });
 
-  it('multiplies into an alpha the color already carries', () => {
+  it('scales an alpha written in any form the picker accepts', () => {
+    // The bug this guards: reading only the comma form silently treated
+    // these as opaque, so a blurred module came out twice as solid as set.
     expect(colorWithAlpha('rgba(0, 0, 0, 0.5)', 0.5)).toBe('rgba(0, 0, 0, 0.25)');
     expect(colorWithAlpha('rgb(0 0 0 / 50%)', 0.5)).toBe('rgba(0, 0, 0, 0.25)');
+    expect(colorWithAlpha('rgba(0, 0, 0, 50%)', 0.5)).toBe('rgba(0, 0, 0, 0.25)');
+    expect(colorWithAlpha('#000000', 0.5)).toBe('rgba(0, 0, 0, 0.5)');
   });
 
   it('returns null for a color it cannot read, so callers can fall back', () => {
